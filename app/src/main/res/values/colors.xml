@@ -1,0 +1,8 @@
+<resources>
+    <color name="primary">#1E88E5</color>       <!-- 深天藍 -->
+    <color name="on_primary">#FFFFFF</color>
+    <color name="secondary">#FFC107</color>     <!-- 琥珀 -->
+    <color name="on_secondary">#000000</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="on_surface">#212121</color>
+</resources>

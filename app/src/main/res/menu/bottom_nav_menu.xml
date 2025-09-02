@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/nav_home"
+        android:icon="@drawable/ic_auto_awesome"
+        android:title="AI"/>
+
+    <item
+        android:id="@+id/nav_notes"
+        android:icon="@drawable/ic_note"
+        android:title="筆記"/>
+
+    <item
+        android:id="@+id/nav_ocr"
+        android:icon="@drawable/ic_baseline_camera_alt_24"
+        android:title="OCR"/>
+
+    <item
+        android:id="@+id/nav_profile"
+        android:icon="@drawable/ic_nav_profile"
+        android:title="個人"/>
+</menu>

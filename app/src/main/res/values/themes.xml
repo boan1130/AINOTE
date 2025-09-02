@@ -1,0 +1,31 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- ====== 原本有 ActionBar 的主題 ====== -->
+    <style name="Theme.AINOTE" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+        <!-- 色票 -->
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorOnPrimary">@color/on_primary</item>
+        <item name="colorSecondary">@color/secondary</item>
+        <item name="colorOnSecondary">@color/on_secondary</item>
+        <!-- 文字、按鈕形狀 -->
+        <item name="materialButtonStyle">@style/Widget.AINotes.Button</item>
+    </style>
+
+    <!-- ====== 無標題列（NoActionBar）主題，給 LoginActivity 使用 ====== -->
+    <style name="Theme.AINOTE.NoActionBar" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- 保持一樣的色票 -->
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorOnPrimary">@color/on_primary</item>
+        <item name="colorSecondary">@color/secondary</item>
+        <item name="colorOnSecondary">@color/on_secondary</item>
+        <!-- 同樣的按鈕樣式 -->
+        <item name="materialButtonStyle">@style/Widget.AINotes.Button</item>
+    </style>
+
+    <!-- 自訂 Button 樣式 -->
+    <style name="Widget.AINotes.Button" parent="Widget.MaterialComponents.Button">
+        <item name="cornerRadius">24dp</item>
+        <item name="android:paddingTop">12dp</item>
+        <item name="android:paddingBottom">12dp</item>
+        <item name="android:textAllCaps">false</item>
+    </style>
+</resources>

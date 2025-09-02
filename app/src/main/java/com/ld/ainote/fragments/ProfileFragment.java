@@ -1,0 +1,319 @@
+package com.ld.ainote.fragments;
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.text.TextUtils;
+import android.view.*;
+import android.widget.TextView;
+import android.widget.Toast;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import com.google.android.gms.tasks.Tasks;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.firebase.Timestamp;
+import com.google.firebase.auth.*;
+import com.google.firebase.firestore.*;
+import com.ld.ainote.LoginActivity;
+import com.ld.ainote.R;
+import com.ld.ainote.adapters.FriendAdapter;
+import com.ld.ainote.models.Friend;
+import java.security.SecureRandom;
+import java.util.*;
+
+public class ProfileFragment extends Fragment {
+
+    private FirebaseAuth auth;
+    private FirebaseUser user;
+    private FirebaseFirestore db;
+
+    private TextView tvEmail, tvVerify, tvFriendCode;
+    private TextInputEditText etDisplayName, etFriendCode;
+    private MaterialButton btnSaveName, btnSendVerify, btnResetPwd, btnLogout, btnAddFriend;
+
+    private FriendAdapter friendAdapter;
+    private ListenerRegistration friendReg;
+
+    @Nullable
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
+        return inflater.inflate(R.layout.fragment_profile, container, false);
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View v, @Nullable Bundle s) {
+        super.onViewCreated(v, s);
+
+        auth = FirebaseAuth.getInstance();
+        user = auth.getCurrentUser();
+        db = FirebaseFirestore.getInstance();
+
+        if (user == null) {
+            if (getActivity() != null) {
+                startActivity(new Intent(getActivity(), LoginActivity.class));
+                getActivity().finish();
+            }
+            return;
+        }
+
+        tvEmail = v.findViewById(R.id.tvEmail);
+        tvVerify = v.findViewById(R.id.tvVerify);
+        tvFriendCode = v.findViewById(R.id.tvFriendCode);
+        etDisplayName = v.findViewById(R.id.etDisplayName);
+        etFriendCode = v.findViewById(R.id.etFriendCode);
+        btnSaveName = v.findViewById(R.id.btnSaveName);
+        btnSendVerify = v.findViewById(R.id.btnSendVerify);
+        btnResetPwd = v.findViewById(R.id.btnResetPwd);
+        btnLogout = v.findViewById(R.id.btnLogout);
+        btnAddFriend = v.findViewById(R.id.btnAddFriend);
+
+        RecyclerView rvFriends = v.findViewById(R.id.rvFriends);
+        rvFriends.setLayoutManager(new LinearLayoutManager(getContext()));
+        friendAdapter = new FriendAdapter();
+        rvFriends.setAdapter(friendAdapter);
+
+        tvEmail.setText(user.getEmail() != null ? user.getEmail() : "(無信箱)");
+        tvVerify.setText("Email 驗證狀態：" + (user.isEmailVerified() ? "已驗證" : "未驗證"));
+        if (user.getDisplayName() != null) etDisplayName.setText(user.getDisplayName());
+
+        ensureFriendCode();
+
+        btnSaveName.setOnClickListener(view -> saveDisplayName());
+
+        btnSendVerify.setOnClickListener(view -> user.sendEmailVerification().addOnCompleteListener(task -> {
+            Toast.makeText(getContext(), task.isSuccessful() ? "驗證信已寄出" :
+                            "寄送失敗：" + (task.getException() != null ? task.getException().getMessage() : ""),
+                    Toast.LENGTH_LONG).show();
+        }));
+
+        btnResetPwd.setOnClickListener(view -> {
+            String email = user.getEmail();
+            if (TextUtils.isEmpty(email)) {
+                Toast.makeText(getContext(), "此帳號沒有信箱", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            auth.sendPasswordResetEmail(email).addOnCompleteListener(task -> {
+                Toast.makeText(getContext(), task.isSuccessful() ? "重設連結已寄出" :
+                                "寄送失敗：" + (task.getException() != null ? task.getException().getMessage() : ""),
+                        Toast.LENGTH_LONG).show();
+            });
+        });
+
+        btnLogout.setOnClickListener(view -> {
+            auth.signOut();
+            if (getActivity() != null) {
+                Intent it = new Intent(getActivity(), LoginActivity.class);
+                it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                startActivity(it);
+            }
+        });
+
+        btnAddFriend.setOnClickListener(view -> addFriendByCode());
+
+        listenMyFriends();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        setPresence(true);
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        setPresence(false);
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        if (friendReg != null) {
+            friendReg.remove();
+            friendReg = null;
+        }
+    }
+
+    private void ensureFriendCode() {
+        DocumentReference me = db.collection("users").document(user.getUid());
+        me.get().addOnSuccessListener(snap -> {
+            String code = null;
+            if (snap.exists()) code = snap.getString("friendCode");
+            if (TextUtils.isEmpty(code)) {
+                code = genFriendCode();
+                Map<String, Object> upd = new HashMap<>();
+                upd.put("email", user.getEmail());
+                upd.put("displayName", user.getDisplayName());
+                upd.put("friendCode", code);
+                upd.put("createdAt", FieldValue.serverTimestamp());
+                me.set(upd, SetOptions.merge());
+            }
+            tvFriendCode.setText("我的好友代碼：" + fmtCode(code));
+        }).addOnFailureListener(e ->
+                tvFriendCode.setText("我的好友代碼：（讀取失敗）")
+        );
+    }
+
+    private String genFriendCode() {
+        String chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        SecureRandom r = new SecureRandom();
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 8; i++) sb.append(chars.charAt(r.nextInt(chars.length())));
+        return sb.toString();
+    }
+    private String fmtCode(String code) {
+        if (code == null) return "--------";
+        if (code.length() == 8) return code.substring(0,4) + " " + code.substring(4);
+        return code;
+    }
+
+    private void saveDisplayName() {
+        String name = etDisplayName.getText() != null ? etDisplayName.getText().toString().trim() : "";
+        if (TextUtils.isEmpty(name)) {
+            Toast.makeText(getContext(), "請輸入顯示名稱", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        UserProfileChangeRequest req = new UserProfileChangeRequest.Builder()
+                .setDisplayName(name).build();
+        user.updateProfile(req).addOnCompleteListener(task -> {
+            if (!task.isSuccessful()) {
+                Toast.makeText(getContext(), "更新失敗：" +
+                                (task.getException() != null ? task.getException().getMessage() : ""),
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            db.collection("users").document(user.getUid())
+                    .set(new HashMap<String, Object>() {{
+                        put("displayName", name);
+                        put("updatedAt", FieldValue.serverTimestamp());
+                    }}, SetOptions.merge())
+                    .addOnSuccessListener(unused ->
+                            Toast.makeText(getContext(), "已更新顯示名稱", Toast.LENGTH_SHORT).show())
+                    .addOnFailureListener(e ->
+                            Toast.makeText(getContext(), "Firestore 同步失敗：" + e.getMessage(), Toast.LENGTH_LONG).show());
+        });
+    }
+
+    private void addFriendByCode() {
+        String code = etFriendCode.getText() != null ? etFriendCode.getText().toString().trim().toUpperCase() : "";
+        if (TextUtils.isEmpty(code)) {
+            Toast.makeText(getContext(), "請輸入好友代碼", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (code.length() < 6) {
+            Toast.makeText(getContext(), "代碼格式不正確", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        db.collection("users").whereEqualTo("friendCode", code).limit(1).get()
+                .addOnSuccessListener(qs -> {
+                    if (qs.isEmpty()) {
+                        Toast.makeText(getContext(), "查無此代碼", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    DocumentSnapshot other = qs.getDocuments().get(0);
+                    String otherUid = other.getId();
+                    if (otherUid.equals(user.getUid())) {
+                        Toast.makeText(getContext(), "不能加入自己為好友", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    String otherName = other.getString("displayName");
+                    String otherEmail = other.getString("email");
+
+                    DocumentReference myFriendDoc = db.collection("users").document(user.getUid())
+                            .collection("friends").document(otherUid);
+                    DocumentReference otherFriendDoc = db.collection("users").document(otherUid)
+                            .collection("friends").document(user.getUid());
+
+                    Map<String, Object> meToOther = new HashMap<>();
+                    meToOther.put("uid", otherUid);
+                    meToOther.put("displayName", otherName);
+                    meToOther.put("email", otherEmail);
+                    meToOther.put("addedAt", FieldValue.serverTimestamp());
+
+                    Map<String, Object> otherToMe = new HashMap<>();
+                    otherToMe.put("uid", user.getUid());
+                    otherToMe.put("displayName", user.getDisplayName());
+                    otherToMe.put("email", user.getEmail());
+                    otherToMe.put("addedAt", FieldValue.serverTimestamp());
+
+                    WriteBatch batch = db.batch();
+                    batch.set(myFriendDoc, meToOther, SetOptions.merge());
+                    batch.set(otherFriendDoc, otherToMe, SetOptions.merge());
+                    batch.commit().addOnSuccessListener(unused -> {
+                        etFriendCode.setText("");
+                        Toast.makeText(getContext(), "已加入好友", Toast.LENGTH_SHORT).show();
+                    }).addOnFailureListener(e ->
+                            Toast.makeText(getContext(), "加入失敗：" + e.getMessage(), Toast.LENGTH_LONG).show());
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(getContext(), "查詢失敗：" + e.getMessage(), Toast.LENGTH_LONG).show());
+    }
+
+    private void listenMyFriends() {
+        CollectionReference mine = db.collection("users").document(user.getUid()).collection("friends");
+        friendReg = mine.addSnapshotListener((qs, e) -> {
+            if (e != null || qs == null) return;
+            List<Friend> base = new ArrayList<>();
+            for (DocumentSnapshot s : qs.getDocuments()) {
+                Friend f = new Friend(
+                        s.getString("uid"),
+                        s.getString("displayName"),
+                        s.getString("email")
+                );
+                base.add(f);
+            }
+            friendAdapter.setData(base);
+            for (Friend f : base) {
+                if (f.getUid() == null) continue;
+                fetchFriendDetails(f.getUid());
+            }
+        });
+    }
+
+    private void fetchFriendDetails(String friendUid) {
+        DocumentReference otherDoc = db.collection("users").document(friendUid);
+        CollectionReference notesCol = db.collection("users").document(friendUid).collection("notes");
+
+        Tasks.whenAllSuccess(otherDoc.get(), notesCol.get())
+                .addOnSuccessListener(results -> {
+                    DocumentSnapshot userSnap = (DocumentSnapshot) results.get(0);
+                    QuerySnapshot noteSnap = (QuerySnapshot) results.get(1);
+
+                    long last = 0L;
+                    Boolean online = false;
+                    if (userSnap.exists()) {
+                        Timestamp ts = userSnap.getTimestamp("lastOnline");
+                        if (ts != null) last = ts.toDate().getTime();
+                        online = userSnap.getBoolean("online") != null && userSnap.getBoolean("online");
+                    }
+                    int count = noteSnap != null ? noteSnap.size() : 0;
+
+                    Friend f = new Friend();
+                    f.setUid(friendUid);
+                    f.setDisplayName(userSnap.getString("displayName"));
+                    f.setEmail(userSnap.getString("email"));
+                    f.setLastOnline(online ? System.currentTimeMillis() : last);
+                    f.setNoteCount(count);
+                    friendAdapter.upsert(f);
+                })
+                .addOnFailureListener(e -> {
+                });
+    }
+
+    private void setPresence(boolean online) {
+        Map<String, Object> upd = new HashMap<>();
+        upd.put("online", online);
+        if (!online) {
+            upd.put("lastOnline", FieldValue.serverTimestamp());
+        }
+        db.collection("users").document(user.getUid())
+                .set(upd, SetOptions.merge());
+    }
+}

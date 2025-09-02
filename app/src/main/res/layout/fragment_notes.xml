@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/notes_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingTop="16dp"
+    android:paddingBottom="72dp">
+
+    <!-- 背景漸層 -->
+    <View
+        android:id="@+id/bg"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@drawable/bg_gradient"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- 搜尋 -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilSearch"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:hint="搜尋關鍵字（標題/內容）"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etSearch"
+            android:imeOptions="actionSearch"
+            android:inputType="text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- 群組(堆疊) 開關 -->
+    <com.google.android.material.materialswitch.MaterialSwitch
+        android:id="@+id/swGroup"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="群組顯示（堆疊）"
+        app:showText="false"
+        android:textOn="開"
+        android:textOff="關"
+        android:layout_marginTop="8dp"
+        app:layout_constraintTop_toBottomOf="@id/tilSearch"
+        app:layout_constraintStart_toStartOf="parent"/>
+
+    <!-- 清單 -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvNotes"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:clipToPadding="false"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        app:layout_constraintTop_toBottomOf="@id/swGroup"
+        app:layout_constraintBottom_toTopOf="@id/btnAdd"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- 空狀態 -->
+    <TextView
+        android:id="@+id/tvEmpty"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="目前沒有筆記，點擊下方按鈕新增一筆吧！"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:padding="12dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="@id/rvNotes"
+        app:layout_constraintBottom_toBottomOf="@id/rvNotes"
+        app:layout_constraintStart_toStartOf="@id/rvNotes"
+        app:layout_constraintEnd_toEndOf="@id/rvNotes"/>
+
+    <!-- 載入中 -->
+    <ProgressBar
+        android:id="@+id/progress"
+        style="?android:attr/progressBarStyleLarge"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="@id/rvNotes"
+        app:layout_constraintBottom_toBottomOf="@id/rvNotes"
+        app:layout_constraintStart_toStartOf="@id/rvNotes"
+        app:layout_constraintEnd_toEndOf="@id/rvNotes"/>
+
+    <!-- 新增筆記 -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnAdd"
+        style="@style/Widget.AINotes.Button"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="+ 新增筆記"
+        android:contentDescription="新增筆記"
+        android:layout_marginTop="12dp"
+        app:layout_constraintTop_toBottomOf="@id/rvNotes"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+</androidx.constraintlayout.widget.ConstraintLayout>

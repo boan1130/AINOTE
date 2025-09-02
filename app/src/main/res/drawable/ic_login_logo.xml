@@ -1,0 +1,15 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="64dp"
+    android:height="64dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- 鎖頭 -->
+    <path
+        android:fillColor="@color/primary"
+        android:pathData="M12,17a2,2 0 0,0 2,-2v-3a2,2 0 0,0 -4,0v3a2,2 0 0,0 2,2z"/>
+    <!-- 鎖圈 -->
+    <path
+        android:fillColor="@color/primary"
+        android:pathData="M17,8h-1V6a4,4 0 0,0 -8,0v2H7a2,2 0 0,0 -2,2v9a2,2 0 0,0 2,2h10a2,2 0 0,0 2,-2V10a2,2 0 0,0 -2,-2zM9,6a2,2 0 0,1 4,0v2h-4V6z"/>
+</vector>
