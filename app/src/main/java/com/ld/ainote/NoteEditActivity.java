@@ -37,6 +37,8 @@ public class NoteEditActivity extends AppCompatActivity {
 
     private final List<String> currentCollaborators = new ArrayList<>();
 
+    private TextInputEditText etChapter, etSection;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -54,6 +56,9 @@ public class NoteEditActivity extends AppCompatActivity {
         btnToggleHighlights = findViewById(R.id.btnToggleHighlights);
         highlightList = findViewById(R.id.highlightList);
 
+        etChapter = findViewById(R.id.etChapter);                    // [NEW] 章
+        etSection = findViewById(R.id.etSection);                    // [NEW] 節
+
         noteId  = getIntent().getStringExtra("note_id");
         ownerId = getIntent().getStringExtra("owner_id");
         if (TextUtils.isEmpty(ownerId)) {
@@ -70,7 +75,19 @@ public class NoteEditActivity extends AppCompatActivity {
                     etTitle.setText(note.getTitle());
                     etContent.setText(note.getContent());
                     etStack.setText(note.getStack());
+                    // ↓↓↓ 帶回章、節到 UI（舊資料沒有時留空）
+                    if (note.getChapter() > 0) {                     // [NEW]
+                        etChapter.setText(String.valueOf(note.getChapter()));
+                    } else {
+                        etChapter.setText("");                       // [NEW]
+                    }
+                    if (note.getSection() > 0) {                     // [NEW]
+                        etSection.setText(String.valueOf(note.getSection()));
+                    } else {
+                        etSection.setText("");                        // [NEW]
+                    }
                     refreshHighlightPanel();
+                    updateToggleText();
                 }
             }, e -> Toast.makeText(this, "載入失敗：" + e.getMessage(), Toast.LENGTH_LONG).show());
 
@@ -87,10 +104,12 @@ public class NoteEditActivity extends AppCompatActivity {
         btnMark.setOnClickListener(v -> {
             HighlightUtils.addMark(etContent);
             refreshHighlightPanel();
+            updateToggleText();
         });
         btnUnmark.setOnClickListener(v -> {
             HighlightUtils.removeNearestMark(etContent);
             refreshHighlightPanel();
+            updateToggleText();
         });
 
         btnToggleHighlights.setOnClickListener(v -> {
@@ -101,14 +120,24 @@ public class NoteEditActivity extends AppCompatActivity {
 
         btnSave.setOnClickListener(v -> {
             String title = s(etTitle), content = s(etContent), stack = s(etStack);
+            int chapter = parseIntSafe(etChapter);                    // [NEW]
+            int section = parseIntSafe(etSection);                    // [NEW]
+
             if (TextUtils.isEmpty(title) && TextUtils.isEmpty(content)) {
                 Toast.makeText(this, "請輸入標題或內容", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (TextUtils.isEmpty(stack)) {                           // [NEW] 強制要求大類別
+                Toast.makeText(this, "請填寫『大類別』", Toast.LENGTH_SHORT).show();
                 return;
             }
 
             if (TextUtils.isEmpty(noteId)) {
                 Note n = new Note(title, content);
                 n.setStack(stack);
+                n.setChapter(chapter);                                // [NEW]
+                n.setSection(section);
                 repo.addNote(n, task -> {
                     if (task.isSuccessful()) {
                         Toast.makeText(this, "筆記已新增", Toast.LENGTH_SHORT).show();
@@ -122,7 +151,9 @@ public class NoteEditActivity extends AppCompatActivity {
                 n.setId(noteId);
                 n.setTitle(title);
                 n.setContent(content);
-                n.setStack(stack);
+                n.setStack(stack);                                    // [CHANGED]
+                n.setChapter(chapter);                                // [NEW]
+                n.setSection(section);
                 repo.updateNote(n, ownerId).addOnCompleteListener(t -> {
                     if (t.isSuccessful()) {
                         Toast.makeText(this, "已儲存變更", Toast.LENGTH_SHORT).show();
@@ -168,9 +199,10 @@ public class NoteEditActivity extends AppCompatActivity {
             String[] names = new String[friends.size()];
             boolean[] checked = new boolean[friends.size()];
             List<String> uids = new ArrayList<>();
+
             for (int i = 0; i < friends.size(); i++) {
                 Friend f = friends.get(i);
-                names[i] = (f.getDisplayName() != null) ? f.getDisplayName() : f.getUid();
+                names[i] = formatFriendLabel(f);      // ← 這裡改用帶「帳號」的顯示字串
                 uids.add(f.getUid());
                 checked[i] = currentCollaborators.contains(f.getUid());
             }
@@ -216,5 +248,22 @@ public class NoteEditActivity extends AppCompatActivity {
 
     private String s(TextInputEditText et) {
         return et.getText() == null ? "" : et.getText().toString().trim();
+    }
+
+    private int parseIntSafe(TextInputEditText et) {                  // [NEW] 解析章/節數字；空字串回 0
+        String v = s(et);
+        try { return TextUtils.isEmpty(v) ? 0 : Integer.parseInt(v); }
+        catch (Exception ex) { return 0; }
+    }
+
+    // 依你的 Friend 資料模型調整欄位名稱：假設有 getEmail()；若沒有，就用 getUid() 當備援
+    private String formatFriendLabel(Friend f) {
+        if (f.getDisplayName() != null && !f.getDisplayName().isEmpty()) {
+            return f.getDisplayName();
+        } else if (f.getEmail() != null && !f.getEmail().isEmpty()) {
+            return f.getEmail();
+        } else {
+            return f.getUid();
+        }
     }
 }

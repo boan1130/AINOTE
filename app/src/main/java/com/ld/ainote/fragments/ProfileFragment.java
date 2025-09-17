@@ -6,11 +6,13 @@ import android.text.TextUtils;
 import android.view.*;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.google.android.gms.tasks.Tasks;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
@@ -21,9 +23,15 @@ import com.ld.ainote.LoginActivity;
 import com.ld.ainote.R;
 import com.ld.ainote.adapters.FriendAdapter;
 import com.ld.ainote.models.Friend;
+
 import java.security.SecureRandom;
 import java.util.*;
 
+/**
+ * ProfileFragment
+ * 只負責「好友管理」：顯示/產生好友代碼、加好友、好友清單、基本帳號資訊。
+ * 不顯示任何筆記（自己的或共筆）。
+ */
 public class ProfileFragment extends Fragment {
 
     private FirebaseAuth auth;
@@ -61,16 +69,16 @@ public class ProfileFragment extends Fragment {
             return;
         }
 
-        tvEmail = v.findViewById(R.id.tvEmail);
-        tvVerify = v.findViewById(R.id.tvVerify);
-        tvFriendCode = v.findViewById(R.id.tvFriendCode);
+        tvEmail       = v.findViewById(R.id.tvEmail);
+        tvVerify      = v.findViewById(R.id.tvVerify);
+        tvFriendCode  = v.findViewById(R.id.tvFriendCode);
         etDisplayName = v.findViewById(R.id.etDisplayName);
-        etFriendCode = v.findViewById(R.id.etFriendCode);
-        btnSaveName = v.findViewById(R.id.btnSaveName);
+        etFriendCode  = v.findViewById(R.id.etFriendCode);
+        btnSaveName   = v.findViewById(R.id.btnSaveName);
         btnSendVerify = v.findViewById(R.id.btnSendVerify);
-        btnResetPwd = v.findViewById(R.id.btnResetPwd);
-        btnLogout = v.findViewById(R.id.btnLogout);
-        btnAddFriend = v.findViewById(R.id.btnAddFriend);
+        btnResetPwd   = v.findViewById(R.id.btnResetPwd);
+        btnLogout     = v.findViewById(R.id.btnLogout);
+        btnAddFriend  = v.findViewById(R.id.btnAddFriend);
 
         RecyclerView rvFriends = v.findViewById(R.id.rvFriends);
         rvFriends.setLayoutManager(new LinearLayoutManager(getContext()));
@@ -85,11 +93,12 @@ public class ProfileFragment extends Fragment {
 
         btnSaveName.setOnClickListener(view -> saveDisplayName());
 
-        btnSendVerify.setOnClickListener(view -> user.sendEmailVerification().addOnCompleteListener(task -> {
-            Toast.makeText(getContext(), task.isSuccessful() ? "驗證信已寄出" :
-                            "寄送失敗：" + (task.getException() != null ? task.getException().getMessage() : ""),
-                    Toast.LENGTH_LONG).show();
-        }));
+        btnSendVerify.setOnClickListener(view ->
+                user.sendEmailVerification().addOnCompleteListener(task ->
+                        Toast.makeText(getContext(),
+                                task.isSuccessful() ? "驗證信已寄出" :
+                                        "寄送失敗：" + (task.getException() != null ? task.getException().getMessage() : ""),
+                                Toast.LENGTH_LONG).show()));
 
         btnResetPwd.setOnClickListener(view -> {
             String email = user.getEmail();
@@ -97,11 +106,11 @@ public class ProfileFragment extends Fragment {
                 Toast.makeText(getContext(), "此帳號沒有信箱", Toast.LENGTH_SHORT).show();
                 return;
             }
-            auth.sendPasswordResetEmail(email).addOnCompleteListener(task -> {
-                Toast.makeText(getContext(), task.isSuccessful() ? "重設連結已寄出" :
-                                "寄送失敗：" + (task.getException() != null ? task.getException().getMessage() : ""),
-                        Toast.LENGTH_LONG).show();
-            });
+            auth.sendPasswordResetEmail(email).addOnCompleteListener(task ->
+                    Toast.makeText(getContext(),
+                            task.isSuccessful() ? "重設連結已寄出" :
+                                    "寄送失敗：" + (task.getException() != null ? task.getException().getMessage() : ""),
+                            Toast.LENGTH_LONG).show());
         });
 
         btnLogout.setOnClickListener(view -> {
@@ -139,6 +148,7 @@ public class ProfileFragment extends Fragment {
         }
     }
 
+    /** 產生或讀取好友代碼（8 碼），顯示到 UI */
     private void ensureFriendCode() {
         DocumentReference me = db.collection("users").document(user.getUid());
         me.get().addOnSuccessListener(snap -> {
@@ -159,6 +169,7 @@ public class ProfileFragment extends Fragment {
         );
     }
 
+    /** 產生 8 碼不含易混淆字的代碼 */
     private String genFriendCode() {
         String chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
         SecureRandom r = new SecureRandom();
@@ -166,12 +177,15 @@ public class ProfileFragment extends Fragment {
         for (int i = 0; i < 8; i++) sb.append(chars.charAt(r.nextInt(chars.length())));
         return sb.toString();
     }
+
+    /** 4-4 顯示 */
     private String fmtCode(String code) {
         if (code == null) return "--------";
-        if (code.length() == 8) return code.substring(0,4) + " " + code.substring(4);
+        if (code.length() == 8) return code.substring(0, 4) + " " + code.substring(4);
         return code;
     }
 
+    /** 更新顯示名稱（Auth + Firestore） */
     private void saveDisplayName() {
         String name = etDisplayName.getText() != null ? etDisplayName.getText().toString().trim() : "";
         if (TextUtils.isEmpty(name)) {
@@ -200,14 +214,16 @@ public class ProfileFragment extends Fragment {
         });
     }
 
+    /** 以代碼加好友（雙向建立 /users/{uid}/friends/{otherUid}） */
     private void addFriendByCode() {
-        String code = etFriendCode.getText() != null ? etFriendCode.getText().toString().trim().toUpperCase() : "";
+        String raw = etFriendCode.getText() != null ? etFriendCode.getText().toString() : "";
+        String code = raw.replace(" ", "").trim().toUpperCase(); // 容忍使用者輸入空格
         if (TextUtils.isEmpty(code)) {
             Toast.makeText(getContext(), "請輸入好友代碼", Toast.LENGTH_SHORT).show();
             return;
         }
-        if (code.length() < 6) {
-            Toast.makeText(getContext(), "代碼格式不正確", Toast.LENGTH_SHORT).show();
+        if (code.length() != 8) {
+            Toast.makeText(getContext(), "代碼需為 8 碼", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -256,6 +272,7 @@ public class ProfileFragment extends Fragment {
                         Toast.makeText(getContext(), "查詢失敗：" + e.getMessage(), Toast.LENGTH_LONG).show());
     }
 
+    /** 監聽我的好友清單（不顯示任何筆記列表） */
     private void listenMyFriends() {
         CollectionReference mine = db.collection("users").document(user.getUid()).collection("friends");
         friendReg = mine.addSnapshotListener((qs, e) -> {
@@ -270,6 +287,7 @@ public class ProfileFragment extends Fragment {
                 base.add(f);
             }
             friendAdapter.setData(base);
+            // 額外抓好友資訊（上線/離線、筆記數）做摘要用；不在這裡顯示筆記清單
             for (Friend f : base) {
                 if (f.getUid() == null) continue;
                 fetchFriendDetails(f.getUid());
@@ -277,6 +295,7 @@ public class ProfileFragment extends Fragment {
         });
     }
 
+    /** 取得好友的狀態/筆記數（摘要資訊） */
     private void fetchFriendDetails(String friendUid) {
         DocumentReference otherDoc = db.collection("users").document(friendUid);
         CollectionReference notesCol = db.collection("users").document(friendUid).collection("notes");
@@ -287,11 +306,12 @@ public class ProfileFragment extends Fragment {
                     QuerySnapshot noteSnap = (QuerySnapshot) results.get(1);
 
                     long last = 0L;
-                    Boolean online = false;
+                    boolean online = false;
                     if (userSnap.exists()) {
                         Timestamp ts = userSnap.getTimestamp("lastOnline");
                         if (ts != null) last = ts.toDate().getTime();
-                        online = userSnap.getBoolean("online") != null && userSnap.getBoolean("online");
+                        Boolean on = userSnap.getBoolean("online");
+                        online = on != null && on;
                     }
                     int count = noteSnap != null ? noteSnap.size() : 0;
 
@@ -303,10 +323,10 @@ public class ProfileFragment extends Fragment {
                     f.setNoteCount(count);
                     friendAdapter.upsert(f);
                 })
-                .addOnFailureListener(e -> {
-                });
+                .addOnFailureListener(e -> { /* ignore */ });
     }
 
+    /** 線上狀態（簡易版） */
     private void setPresence(boolean online) {
         Map<String, Object> upd = new HashMap<>();
         upd.put("online", online);

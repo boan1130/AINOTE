@@ -4,18 +4,33 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:paddingTop="72dp"
+    android:paddingTop="16dp"
     android:paddingBottom="24dp">
 
-    <View
+    <!-- 背景圖 -->
+    <ImageView
+        android:id="@+id/bgImage"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:background="@drawable/bg_gradient"
+        android:scaleType="centerCrop"
+        android:src="@drawable/bg"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
 
+    <!-- 半透明霧面遮罩 -->
+    <View
+        android:id="@+id/scrim"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#CCFFFFFF"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- 主要內容卡片 -->
     <com.google.android.material.card.MaterialCardView
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -40,9 +55,11 @@
 
                 <!-- 標題 -->
                 <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
+                    android:layout_height="wrap_content"
+                    app:boxStrokeColor="#C6A15F"
+                    app:boxBackgroundColor="@android:color/transparent">
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etTitle"
                         android:hint="標題"
@@ -52,23 +69,59 @@
 
                 <!-- 堆疊/群組 -->
                 <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp">
+                    android:layout_marginTop="12dp"
+                    app:boxStrokeColor="#C6A15F"
+                    app:boxBackgroundColor="@android:color/transparent">
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etStack"
-                        android:hint="堆疊/群組（例如：第3章、作業重點）"
+                        android:hint="大類別（例如：國文、物理、化學）"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- 章 -->
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    app:boxStrokeColor="#C6A15F"
+                    app:boxBackgroundColor="@android:color/transparent">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etChapter"
+                        android:hint="章（例如：1）"
+                        android:inputType="number"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- 節 -->
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    app:boxStrokeColor="#C6A15F"
+                    app:boxBackgroundColor="@android:color/transparent">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etSection"
+                        android:hint="節（例如：2；顯示為 1-2）"
+                        android:inputType="number"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"/>
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <!-- 內容 -->
                 <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp">
+                    android:layout_marginTop="12dp"
+                    app:boxStrokeColor="#C6A15F"
+                    app:boxBackgroundColor="@android:color/transparent">
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etContent"
                         android:hint="內容（可選取範圍→按螢光筆）"
@@ -91,26 +144,38 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="🔶 螢光筆" />
-                    <Space android:layout_width="8dp" android:layout_height="1dp"/>
+                        android:text="🔶 螢光筆"
+                        app:strokeColor="#C6A15F"
+                        app:strokeWidth="1dp"
+                        android:textColor="#5C4B2A"/>
+                    <Space
+                        android:layout_width="8dp"
+                        android:layout_height="1dp"/>
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnUnmark"
                         style="@style/Widget.AINotes.Button"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="移除標記" />
+                        android:text="移除標記"
+                        app:strokeColor="#C6A15F"
+                        app:strokeWidth="1dp"
+                        android:textColor="#5C4B2A"/>
                 </LinearLayout>
 
-                <!-- 重點清單（可展開） -->
+                <!-- 重點清單開關 -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnToggleHighlights"
                     style="@style/Widget.AINotes.Button"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:text="顯示重點 (0)" />
+                    android:text="顯示重點 (0)"
+                    app:strokeColor="#C6A15F"
+                    app:strokeWidth="1dp"
+                    android:textColor="#5C4B2A"/>
 
+                <!-- 重點清單內容 -->
                 <LinearLayout
                     android:id="@+id/highlightList"
                     android:layout_width="match_parent"
@@ -119,7 +184,7 @@
                     android:visibility="gone"
                     android:layout_marginTop="4dp" />
 
-                <!-- 儲存/刪除 -->
+                <!-- 儲存 / 刪除 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -131,15 +196,23 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="儲存"/>
-                    <Space android:layout_width="8dp" android:layout_height="1dp"/>
+                        android:text="儲存"
+                        app:strokeColor="#C6A15F"
+                        app:strokeWidth="1dp"
+                        android:textColor="#5C4B2A"/>
+                    <Space
+                        android:layout_width="8dp"
+                        android:layout_height="1dp"/>
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnDelete"
                         style="@style/Widget.AINotes.Button"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="刪除"/>
+                        android:text="刪除"
+                        app:strokeColor="#C6A15F"
+                        app:strokeWidth="1dp"
+                        android:textColor="#5C4B2A"/>
                 </LinearLayout>
 
                 <!-- 共編 -->
@@ -149,8 +222,10 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="選取好友共編"/>
-
+                    android:text="選取好友共編"
+                    app:strokeColor="#C6A15F"
+                    app:strokeWidth="1dp"
+                    android:textColor="#5C4B2A"/>
             </LinearLayout>
         </ScrollView>
     </com.google.android.material.card.MaterialCardView>

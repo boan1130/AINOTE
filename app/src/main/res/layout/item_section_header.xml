@@ -5,7 +5,7 @@
     android:layout_height="wrap_content"
     android:text="(群組)"
     android:textStyle="bold"
-    android:textSize="13sp"
+    android:textSize="20sp"
     android:paddingStart="8dp"
     android:paddingEnd="8dp"
     android:paddingTop="6dp"

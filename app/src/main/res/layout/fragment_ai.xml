@@ -5,82 +5,174 @@
     android:id="@+id/ai_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:paddingTop="16dp"
+    android:paddingTop="10dp"
     android:paddingBottom="72dp">
 
-    <View
-        android:id="@+id/bg"
+    <!-- 背景圖 -->
+    <ImageView
+        android:id="@+id/bgImage"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:background="@drawable/bg_gradient"
+        android:src="@drawable/bg"
+        android:scaleType="centerCrop"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
 
-    <!-- 選擇筆記 -->
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/tilNote"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+    <!-- 霧面遮罩 -->
+    <View
+        android:id="@+id/scrim"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#CCFFFFFF"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- 類別/章節（半透明卡片，直接顯示我的+共筆） -->
+    <LinearLayout
+        android:id="@+id/categoryBlock"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:hint="選擇要分析的筆記"
+        android:orientation="vertical"
+        android:background="@drawable/bg_card_translucent"
+        android:padding="10dp"
+        android:layout_marginStart="10dp"
+        android:layout_marginEnd="10dp"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <AutoCompleteTextView
-            android:id="@+id/spNote"
-            android:layout_width="match_parent"
+        <TextView
+            android:id="@+id/tvSectionLabel"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:inputType="none"/>
-    </com.google.android.material.textfield.TextInputLayout>
+            android:text="選擇章節（含我的＋共筆，可多選）"
+            android:textStyle="bold"
+            android:textColor="#5C4B2A"
+            android:textSize="16sp"
+            android:padding="4dp"
+            android:layout_marginBottom="8dp"/>
 
-    <!-- 任務選擇 -->
-    <com.google.android.material.chip.ChipGroup
-        android:id="@+id/chipsTask"
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="120dp"
+            android:fillViewport="true"
+            android:fadeScrollbars="false">
+
+            <LinearLayout
+                android:id="@+id/containerCategories"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="4dp"/>
+        </ScrollView>
+    </LinearLayout>
+
+    <!-- 任務選擇：單行＋可橫向滑動 -->
+    <HorizontalScrollView
+        android:id="@+id/scrollTasks"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        app:singleSelection="true"
-        app:selectionRequired="true"
-        app:layout_constraintTop_toBottomOf="@id/tilNote"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="10dp"
+        android:scrollbars="none"
+        app:layout_constraintTop_toBottomOf="@id/categoryBlock"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="12dp">
+        app:layout_constraintEnd_toEndOf="parent">
 
-        <com.google.android.material.chip.Chip
-            android:id="@+id/chSummary"
-            style="@style/Widget.MaterialComponents.Chip.Filter"
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/chipsTask"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="重點整理"/>
+            app:singleSelection="true"
+            app:selectionRequired="true"
+            app:singleLine="true"
+            app:chipSpacingHorizontal="6dp">
 
-        <com.google.android.material.chip.Chip
-            android:id="@+id/chQuiz"
-            style="@style/Widget.MaterialComponents.Chip.Filter"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="針對內容出題目"/>
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chSummary"
+                style="@style/Widget.MaterialComponents.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="重點整理"
+                android:textColor="#5C4B2A"
+                android:textSize="13sp"
+                app:checkedIconTint="#C6A15F"
+                app:checkedIconVisible="true"
+                app:chipBackgroundColor="@android:color/transparent"
+                app:chipStrokeColor="#C6A15F"
+                app:chipStrokeWidth="1dp" />
 
-        <com.google.android.material.chip.Chip
-            android:id="@+id/chIntegrate"
-            style="@style/Widget.MaterialComponents.Chip.Filter"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="融會貫通"/>
-    </com.google.android.material.chip.ChipGroup>
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chQuiz"
+                style="@style/Widget.MaterialComponents.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="出題目"
+                android:textColor="#5C4B2A"
+                android:textSize="13sp"
+                app:checkedIconTint="#C6A15F"
+                app:checkedIconVisible="true"
+                app:chipBackgroundColor="@android:color/transparent"
+                app:chipStrokeColor="#C6A15F"
+                app:chipStrokeWidth="1dp" />
 
-    <!-- 年齡（影響出題難度） -->
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chIntegrate"
+                style="@style/Widget.MaterialComponents.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="融會貫通"
+                android:textColor="#5C4B2A"
+                android:textSize="13sp"
+                app:checkedIconTint="#C6A15F"
+                app:checkedIconVisible="true"
+                app:chipBackgroundColor="@android:color/transparent"
+                app:chipStrokeColor="#C6A15F"
+                app:chipStrokeWidth="1dp" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chReviewWrong"
+                style="@style/Widget.MaterialComponents.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="錯誤複習"
+                android:textColor="#5C4B2A"
+                android:textSize="13sp"
+                app:checkedIconTint="#C6A15F"
+                app:checkedIconVisible="true"
+                app:chipBackgroundColor="@android:color/transparent"
+                app:chipStrokeColor="#C6A15F"
+                app:chipStrokeWidth="1dp" />
+        </com.google.android.material.chip.ChipGroup>
+    </HorizontalScrollView>
+
+    <!-- 年齡 -->
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/tilAge"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:hint="年齡（出題會依年齡調整難度）"
-        app:layout_constraintTop_toBottomOf="@id/chipsTask"
+        app:boxBackgroundMode="outline"
+        app:boxBackgroundColor="@android:color/transparent"
+        app:boxStrokeColor="#C6A15F"
+        app:boxStrokeWidth="1dp"
+        app:boxStrokeWidthFocused="2dp"
+        app:boxCornerRadiusTopStart="16dp"
+        app:boxCornerRadiusTopEnd="16dp"
+        app:boxCornerRadiusBottomStart="16dp"
+        app:boxCornerRadiusBottomEnd="16dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        app:layout_constraintTop_toBottomOf="@id/scrollTasks"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="12dp">
+        app:layout_constraintEnd_toEndOf="parent">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/etAge"
@@ -90,51 +182,59 @@
             android:maxLength="2"/>
     </com.google.android.material.textfield.TextInputLayout>
 
-    <!-- 出題數量（只在「出題目」顯示） -->
+    <!-- 題數（半透明卡片） -->
     <LinearLayout
         android:id="@+id/rowQuiz"
         android:orientation="horizontal"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:background="@drawable/bg_card_translucent"
+        android:padding="10dp"
+        android:gravity="center_vertical"
+        android:visibility="gone"
+        android:layout_marginTop="8dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
         app:layout_constraintTop_toBottomOf="@id/tilAge"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="8dp"
-        android:gravity="center_vertical"
-        android:visibility="gone">
+        app:layout_constraintEnd_toEndOf="parent">
 
         <TextView
             android:id="@+id/tvCountLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="題數：" />
+            android:text="題數："
+            android:textColor="#5C4B2A" />
 
         <SeekBar
             android:id="@+id/seekCount"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:max="3"
-            android:progress="3"/>
+            android:max="20"
+            android:progress="20"/>
 
         <TextView
             android:id="@+id/tvCount"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="2 題"
+            android:text="20 題"
+            android:textColor="#5C4B2A"
             android:layout_marginStart="8dp"/>
     </LinearLayout>
 
-    <!-- 執行 / 儲存成新筆記 -->
+    <!-- 執行 / 儲存 -->
     <LinearLayout
         android:id="@+id/rowActions"
         android:orientation="horizontal"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
         app:layout_constraintTop_toBottomOf="@id/rowQuiz"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="12dp">
+        app:layout_constraintEnd_toEndOf="parent">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnRun"
@@ -142,7 +242,12 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="開始分析"/>
+            android:text="開始分析"
+            app:backgroundTint="#E6FFFFFF"
+            app:strokeColor="#C6A15F"
+            app:strokeWidth="1dp"
+            app:iconTint="#5C4B2A"
+            android:textColor="#5C4B2A"/>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSaveAsNote"
@@ -151,21 +256,81 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginStart="8dp"
-            android:text="儲存成新筆記"/>
+            android:text="儲存成新筆記"
+            app:backgroundTint="#E6FFFFFF"
+            app:strokeColor="#C6A15F"
+            app:strokeWidth="1dp"
+            app:iconTint="#5C4B2A"
+            android:textColor="#5C4B2A"/>
     </LinearLayout>
 
-    <!-- 結果 -->
+    <!-- 測驗容器（半透明卡片） -->
+    <LinearLayout
+        android:id="@+id/quizHost"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:orientation="vertical"
+        android:background="@drawable/bg_card_translucent"
+        android:padding="8dp"
+        android:visibility="gone"
+        android:layout_marginTop="12dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        app:layout_constraintTop_toBottomOf="@id/rowActions"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:fillViewport="true">
+
+            <LinearLayout
+                android:id="@+id/quizList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="8dp"/>
+        </ScrollView>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSubmitQuiz"
+            style="@style/Widget.AINotes.Button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="提交作答"
+            app:backgroundTint="#E6FFFFFF"
+            app:strokeColor="#C6A15F"
+            app:strokeWidth="1dp"
+            app:iconTint="#5C4B2A"
+            android:textColor="#5C4B2A"/>
+    </LinearLayout>
+
+    <!-- 純文字結果 -->
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/tilResult"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:hint="AI 結果"
+        app:boxBackgroundMode="outline"
+        app:boxBackgroundColor="@android:color/transparent"
+        app:boxStrokeColor="#C6A15F"
+        app:boxStrokeWidth="1dp"
+        app:boxStrokeWidthFocused="2dp"
+        app:boxCornerRadiusTopStart="16dp"
+        app:boxCornerRadiusTopEnd="16dp"
+        app:boxCornerRadiusBottomStart="16dp"
+        app:boxCornerRadiusBottomEnd="16dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
         app:layout_constraintTop_toBottomOf="@id/rowActions"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="12dp">
+        app:layout_constraintEnd_toEndOf="parent">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/etResult"
@@ -176,6 +341,7 @@
             android:minLines="8"/>
     </com.google.android.material.textfield.TextInputLayout>
 
+    <!-- 載入中 -->
     <ProgressBar
         android:id="@+id/progress"
         style="?android:attr/progressBarStyleLarge"
@@ -186,5 +352,4 @@
         app:layout_constraintBottom_toBottomOf="@id/tilResult"
         app:layout_constraintStart_toStartOf="@id/tilResult"
         app:layout_constraintEnd_toEndOf="@id/tilResult"/>
-
 </androidx.constraintlayout.widget.ConstraintLayout>

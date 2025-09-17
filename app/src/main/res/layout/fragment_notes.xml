@@ -8,12 +8,24 @@
     android:paddingTop="16dp"
     android:paddingBottom="72dp">
 
-    <!-- 背景漸層 -->
-    <View
-        android:id="@+id/bg"
+    <!-- 背景圖 -->
+    <ImageView
+        android:id="@+id/bgImage"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:background="@drawable/bg_gradient"
+        android:scaleType="centerCrop"
+        android:src="@drawable/bg"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- 霧面遮罩 -->
+    <View
+        android:id="@+id/scrim"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#CCFFFFFF"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -22,13 +34,26 @@
     <!-- 搜尋 -->
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/tilSearch"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:hint="搜尋關鍵字（標題/內容）"
+        app:startIconDrawable="@drawable/ic_search_24"
+        app:endIconMode="clear_text"
+        app:boxBackgroundMode="outline"
+        app:boxBackgroundColor="@android:color/transparent"
+        app:boxStrokeColor="#C6A15F"
+        app:boxStrokeWidth="1dp"
+        app:boxStrokeWidthFocused="2dp"
+        app:boxCornerRadiusTopStart="16dp"
+        app:boxCornerRadiusTopEnd="16dp"
+        app:boxCornerRadiusBottomStart="16dp"
+        app:boxCornerRadiusBottomEnd="16dp"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/etSearch"
@@ -38,18 +63,32 @@
             android:layout_height="wrap_content"/>
     </com.google.android.material.textfield.TextInputLayout>
 
-    <!-- 群組(堆疊) 開關 -->
+    <!-- 群組(堆疊) 開關：關閉文字，並把 on/off 設成空字串避免 null -->
     <com.google.android.material.materialswitch.MaterialSwitch
         android:id="@+id/swGroup"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="群組顯示（堆疊）"
-        app:showText="false"
-        android:textOn="開"
-        android:textOff="關"
+        android:layout_marginStart="16dp"
         android:layout_marginTop="8dp"
+        android:showText="false"
+        android:textOff=""
+        android:textOn=""
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tilSearch"
-        app:layout_constraintStart_toStartOf="parent"/>
+        app:useMaterialThemeColors="true" />
+
+    <!-- 開關標籤 -->
+    <TextView
+        android:id="@+id/tvScope"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="群組顯示（堆疊）｜顯示：我的筆記＋共同筆記"
+        android:textStyle="bold"
+        android:textColor="#5C4B2A"
+        android:layout_marginStart="16dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tilSearch"
+        android:layout_marginTop="8dp"/>
 
     <!-- 清單 -->
     <androidx.recyclerview.widget.RecyclerView
@@ -57,12 +96,18 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:clipToPadding="false"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:background="@drawable/bg_card_translucent"
         app:layout_constraintTop_toBottomOf="@id/swGroup"
         app:layout_constraintBottom_toTopOf="@id/btnAdd"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="8dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"/>
 
     <!-- 空狀態 -->
     <TextView
@@ -72,7 +117,12 @@
         android:text="目前沒有筆記，點擊下方按鈕新增一筆吧！"
         android:textSize="14sp"
         android:textStyle="bold"
-        android:padding="12dp"
+        android:textColor="#5C4B2A"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
+        android:background="@drawable/bg_empty_pill_gold"
         android:visibility="gone"
         app:layout_constraintTop_toTopOf="@id/rvNotes"
         app:layout_constraintBottom_toBottomOf="@id/rvNotes"
@@ -91,7 +141,7 @@
         app:layout_constraintStart_toStartOf="@id/rvNotes"
         app:layout_constraintEnd_toEndOf="@id/rvNotes"/>
 
-    <!-- 新增筆記 -->
+    <!-- 新增 -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnAdd"
         style="@style/Widget.AINotes.Button"
@@ -99,9 +149,22 @@
         android:layout_height="wrap_content"
         android:text="+ 新增筆記"
         android:contentDescription="新增筆記"
-        android:layout_marginTop="12dp"
+        android:insetTop="8dp"
+        android:insetBottom="8dp"
+        app:icon="@drawable/ic_add_24"
+        app:iconGravity="textStart"
+        app:cornerRadius="16dp"
+        android:elevation="6dp"
+        app:backgroundTint="#E6FFFFFF"
+        app:strokeColor="#C6A15F"
+        app:strokeWidth="1dp"
+        app:iconTint="#5C4B2A"
+        android:textColor="#5C4B2A"
         app:layout_constraintTop_toBottomOf="@id/rvNotes"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="12dp"/>
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- 文字樣式：14sp 粗體 -->
+    <style name="Text.Bold14" parent="@android:style/TextAppearance">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">?android:attr/textColorPrimary</item>
+    </style>
+
+    <style name="Widget.AINotes.Chip.Small" parent="Widget.MaterialComponents.Chip.Filter">
+        <item name="chipMinHeight">28dp</item>
+        <item name="chipCornerRadius">16dp</item>
+        <item name="chipStartPadding">8dp</item>
+        <item name="chipEndPadding">8dp</item>
+        <item name="android:textSize">12sp</item>
+        <!-- 若要允許小於 48dp 的觸控目標，需關閉這個；會影響可用性 -->
+        <item name="ensureMinTouchTargetSize">false</item>
+    </style>
+
+</resources>

@@ -4,15 +4,26 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:paddingTop="72dp"
+    android:paddingTop="16dp"
     android:paddingBottom="72dp">
 
-    <!-- 漸層背景 -->
-    <View
-        android:id="@+id/bg"
+    <!-- 背景 -->
+    <ImageView
+        android:id="@+id/bgImage"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:background="@drawable/bg_gradient"
+        android:src="@drawable/bg"
+        android:scaleType="centerCrop"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <View
+        android:id="@+id/scrim"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#CCFFFFFF"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -50,12 +61,13 @@
                     android:src="@drawable/ic_profile_avatar"/>
 
                 <TextView
+                    style="@style/TextAppearance.MaterialComponents.Headline6"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:layout_gravity="center"
-                    style="@style/TextAppearance.MaterialComponents.Headline6"
-                    android:text="個人檔案"/>
+                    android:text="個人檔案"
+                    android:textColor="#5C4B2A"/>
 
                 <!-- 信箱/驗證 -->
                 <TextView
@@ -64,20 +76,28 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
                     android:textStyle="bold"
-                    android:text="email@example.com"/>
+                    android:text="email@example.com"
+                    android:textColor="#5C4B2A"/>
 
                 <TextView
                     android:id="@+id/tvVerify"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Email 驗證狀態：未驗證"/>
+                    android:text="Email 驗證狀態：未驗證"
+                    android:textColor="#5C4B2A"/>
 
                 <!-- 顯示名稱 -->
                 <com.google.android.material.textfield.TextInputLayout
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp">
+                    android:layout_marginTop="16dp"
+                    app:boxBackgroundMode="outline"
+                    app:boxBackgroundColor="@android:color/transparent"
+                    app:boxStrokeColor="#C6A15F"
+                    app:boxStrokeWidth="1dp"
+                    app:boxStrokeWidthFocused="2dp">
+
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etDisplayName"
                         android:layout_width="match_parent"
@@ -91,7 +111,11 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="儲存顯示名稱"/>
+                    android:text="儲存顯示名稱"
+                    app:backgroundTint="#E6FFFFFF"
+                    app:strokeColor="#C6A15F"
+                    app:strokeWidth="1dp"
+                    android:textColor="#5C4B2A"/>
 
                 <!-- 驗證/重設/登出 -->
                 <LinearLayout
@@ -106,11 +130,13 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="寄送驗證信"/>
+                        android:text="寄送驗證信"
+                        app:backgroundTint="#E6FFFFFF"
+                        app:strokeColor="#C6A15F"
+                        app:strokeWidth="1dp"
+                        android:textColor="#5C4B2A"/>
 
-                    <Space
-                        android:layout_width="8dp"
-                        android:layout_height="1dp" />
+                    <Space android:layout_width="8dp" android:layout_height="1dp"/>
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnResetPwd"
@@ -118,7 +144,11 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="重設密碼"/>
+                        android:text="重設密碼"
+                        app:backgroundTint="#E6FFFFFF"
+                        app:strokeColor="#C6A15F"
+                        app:strokeWidth="1dp"
+                        android:textColor="#5C4B2A"/>
                 </LinearLayout>
 
                 <com.google.android.material.button.MaterialButton
@@ -127,7 +157,11 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="登出"/>
+                    android:text="登出"
+                    app:backgroundTint="#E6FFFFFF"
+                    app:strokeColor="#C6A15F"
+                    app:strokeWidth="1dp"
+                    android:textColor="#5C4B2A"/>
 
                 <!-- 好友代碼 -->
                 <TextView
@@ -136,14 +170,21 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="24dp"
                     android:text="我的好友代碼：---- ----"
-                    android:textStyle="bold"/>
+                    android:textStyle="bold"
+                    android:textColor="#5C4B2A"/>
 
                 <!-- 加好友輸入 -->
                 <com.google.android.material.textfield.TextInputLayout
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp">
+                    android:layout_marginTop="8dp"
+                    app:boxBackgroundMode="outline"
+                    app:boxBackgroundColor="@android:color/transparent"
+                    app:boxStrokeColor="#C6A15F"
+                    app:boxStrokeWidth="1dp"
+                    app:boxStrokeWidthFocused="2dp">
+
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etFriendCode"
                         android:layout_width="match_parent"
@@ -157,15 +198,20 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="加入好友"/>
+                    android:text="加入好友"
+                    app:backgroundTint="#E6FFFFFF"
+                    app:strokeColor="#C6A15F"
+                    app:strokeWidth="1dp"
+                    android:textColor="#5C4B2A"/>
 
                 <!-- 好友清單 -->
                 <TextView
+                    style="@style/TextAppearance.MaterialComponents.Subtitle1"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
                     android:text="我的好友"
-                    style="@style/TextAppearance.MaterialComponents.Subtitle1"/>
+                    android:textColor="#5C4B2A"/>
 
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/rvFriends"
@@ -173,6 +219,7 @@
                     android:layout_height="wrap_content"
                     android:nestedScrollingEnabled="false"
                     android:paddingTop="8dp"/>
+
             </LinearLayout>
         </ScrollView>
     </com.google.android.material.card.MaterialCardView>
