@@ -21,14 +21,7 @@ import com.ld.ainote.net.AiService;
 
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.firestore.CollectionReference;
-import com.google.firebase.firestore.DocumentReference;
-import com.google.firebase.firestore.FieldValue;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.Query;
-import com.google.firebase.firestore.SetOptions;
-import com.google.firebase.firestore.WriteBatch;
-import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.*;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -43,7 +36,7 @@ import java.util.regex.Pattern;
  * - 勾選章節 → AI 出題 / 整理 / 融會貫通
  * - 交卷後：把錯題（含未作答）寫入「雲端 Firestore + 本機 SharedPreferences」
  * - 錯誤複習：依目前勾選的類別/章節 tags 篩選錯題，隨機抽題作答
- * - 本版：章節「一律全部顯示（我的＋共筆）」；預設展開，可點類別標題收合
+ * - 本版：章節「一律全部顯示（我的＋共筆）」；預設收合，可點類別標題展開
  */
 public class AiFragment extends Fragment {
 
@@ -79,9 +72,12 @@ public class AiFragment extends Fragment {
 
     // ===== 題庫（當前畫面顯示） =====
     private final List<Question> currentQuiz = new ArrayList<>();
+    // 🔴 新增：把每篇 note 的 blocks → 文字結果做快取，避免重複抓取
+    private final Map<String, String> blocksTextCache = new HashMap<>();
 
     // 本次 AI 出題時的章節 tags（供交卷寫入錯題庫）
     private List<String> currentContextTags = new ArrayList<>();
+    private View tilAgeLayout;
 
     // ================== 小型資料結構 ==================
     private static class ItemRef {
@@ -209,6 +205,8 @@ public class AiFragment extends Fragment {
         quizHost      = v.findViewById(R.id.quizHost);
         quizList      = v.findViewById(R.id.quizList);
         btnSubmitQuiz = v.findViewById(R.id.btnSubmitQuiz);
+        tilAgeLayout = v.findViewById(R.id.tilAge);
+        tilAgeLayout.setVisibility(View.GONE);
 
         // 預設
         chSummary.setChecked(true);
@@ -228,11 +226,23 @@ public class AiFragment extends Fragment {
 
         // 任務切換：出題/錯誤複習 → 顯示測驗 UI；其他 → 純文字結果
         chipsTask.setOnCheckedStateChangeListener((group, ids) -> {
-            boolean quizMode = chQuiz.isChecked() || chReviewWrong.isChecked();
-            rowQuiz.setVisibility(quizMode ? View.VISIBLE : View.GONE);
-            quizHost.setVisibility(quizMode ? View.VISIBLE : View.GONE);
-            v.findViewById(R.id.tilResult).setVisibility(quizMode ? View.GONE : View.VISIBLE);
-            if (quizMode) {
+            boolean isQuiz = chQuiz.isChecked();                 // 只有「出題目」
+            boolean isWrongReview = chReviewWrong.isChecked();   // 錯誤複習
+            boolean anyQuizMode = isQuiz || isWrongReview;       // 測驗畫面要不要開
+
+            // 題數區：出題目 / 錯誤複習 都顯示
+            rowQuiz.setVisibility(anyQuizMode ? View.VISIBLE : View.GONE);
+
+            // 測驗容器 vs 純文字結果
+            quizHost.setVisibility(anyQuizMode ? View.VISIBLE : View.GONE);
+            v.findViewById(R.id.tilResult).setVisibility(anyQuizMode ? View.GONE : View.VISIBLE);
+
+            // ⭐ 年齡欄位：只在「出題目」時顯示
+            if (tilAgeLayout != null) {
+                tilAgeLayout.setVisibility(isQuiz ? View.VISIBLE : View.GONE);
+            }
+
+            if (anyQuizMode) {
                 seekCount.setProgress(QUIZ_COUNT_MAX);
                 tvCount.setText(QUIZ_COUNT_MAX + " 題");
                 clearQuizUI();
@@ -307,49 +317,52 @@ public class AiFragment extends Fragment {
         // 記住這次 AI 出題所對應的章節 tags（供交卷時把錯題標記進去）
         currentContextTags = chQuiz.isChecked() ? buildSelectedTags(picked) : new ArrayList<>();
 
-        String text = buildCombinedNoteText(picked);
-        if (chQuiz.isChecked()) {
-            text = buildQuizRules(n) + "\n\n" + text;
-        }
-
         setLoading(true);
-        AiService.ask(task, text, n, age, new AiService.Callback() {
-            @Override public void onSuccess(String out) {
-                if (getActivity()==null) return;
-                getActivity().runOnUiThread(() -> {
-                    setLoading(false);
 
-                    Log.d(TAG, "AI output length=" + (out==null?0:out.length())
-                            + ", preview=\n" + truncateForLog(out, 1200));
+        // 先把 blocks 合併成文字，再呼叫 AI
+        buildCombinedNoteTextAsync(picked, combined -> {
+            String text = combined;
+            if (chQuiz.isChecked()) {
+                text = buildQuizRules(n) + "\n\n" + text;
+            }
 
-                    if (chQuiz.isChecked()) {
-                        if (parseQuiz(out, currentQuiz)) {
-                            renderQuizUI(currentQuiz);
-                            quizHost.setVisibility(View.VISIBLE);
-                            requireView().findViewById(R.id.tilResult).setVisibility(View.GONE);
+            AiService.ask(task, text, n, age, new AiService.Callback() {
+                @Override public void onSuccess(String out) {
+                    if (getActivity()==null) return;
+                    getActivity().runOnUiThread(() -> {
+                        setLoading(false);
+                        Log.d(TAG, "AI output length=" + (out==null?0:out.length())
+                                + ", preview=\n" + truncateForLog(out, 1200));
+
+                        if (chQuiz.isChecked()) {
+                            if (parseQuiz(out, currentQuiz)) {
+                                renderQuizUI(currentQuiz);
+                                quizHost.setVisibility(View.VISIBLE);
+                                requireView().findViewById(R.id.tilResult).setVisibility(View.GONE);
+                            } else {
+                                etResult.setText(out);
+                                quizHost.setVisibility(View.GONE);
+                                requireView().findViewById(R.id.tilResult).setVisibility(View.VISIBLE);
+                                toast("格式略有偏差，已以文字方式顯示");
+                                Log.e(TAG, "parseQuiz=false; fallback to text. Raw (truncated):\n"
+                                        + truncateForLog(out, 4000));
+                            }
                         } else {
                             etResult.setText(out);
                             quizHost.setVisibility(View.GONE);
                             requireView().findViewById(R.id.tilResult).setVisibility(View.VISIBLE);
-                            toast("格式略有偏差，已以文字方式顯示");
-                            Log.e(TAG, "parseQuiz=false; fallback to text. Raw (truncated):\n"
-                                    + truncateForLog(out, 4000));
                         }
-                    } else {
-                        etResult.setText(out);
-                        quizHost.setVisibility(View.GONE);
-                        requireView().findViewById(R.id.tilResult).setVisibility(View.VISIBLE);
-                    }
-                });
-            }
-            @Override public void onError(Exception e) {
-                if (getActivity()==null) return;
-                getActivity().runOnUiThread(() -> {
-                    setLoading(false);
-                    toast("AI 呼叫失敗：" + e.getMessage());
-                    Log.e(TAG, "AiService.ask error", e);
-                });
-            }
+                    });
+                }
+                @Override public void onError(Exception e) {
+                    if (getActivity()==null) return;
+                    getActivity().runOnUiThread(() -> {
+                        setLoading(false);
+                        toast("AI 呼叫失敗：" + e.getMessage());
+                        Log.e(TAG, "AiService.ask error", e);
+                    });
+                }
+            });
         });
     }
 
@@ -612,7 +625,7 @@ public class AiFragment extends Fragment {
         }
     }
 
-    /** 一律全部顯示：每個類別預設展開（expanded 加入所有類別） */
+    /** 一律全部顯示：每個類別預設收合，可點標題展開 */
     private void renderAllCategories() {
         containerCategories.removeAllViews();
         itemsByCategory.clear();
@@ -624,12 +637,9 @@ public class AiFragment extends Fragment {
             List<Note> group = byCategory.get(cat);
             if (group == null) continue;
 
-            // ❌ 原本這行會預設展開，改為不要加入
-            // expanded.add(cat);
-
             // 類別標題（可點擊收合）
             TextView header = new TextView(requireContext());
-            header.setText(buildHeaderTitle(cat, group.size(), false)); // ← 預設收合
+            header.setText(buildHeaderTitle(cat, group.size(), false)); // 預設收合
             header.setTextSize(14f);
             header.setTextColor(0xFF000000);
             header.setBackgroundColor(0xFFFFFFFF);
@@ -643,7 +653,7 @@ public class AiFragment extends Fragment {
             LinearLayout secContainer = new LinearLayout(requireContext());
             secContainer.setOrientation(LinearLayout.VERTICAL);
             secContainer.setPadding(pad8, pad8, pad8, pad8);
-            secContainer.setVisibility(View.GONE); // ← 預設收合
+            secContainer.setVisibility(View.GONE); // 預設收合
 
             List<ItemRef> itemRefs = new ArrayList<>();
             for (Note n : group) {
@@ -651,7 +661,7 @@ public class AiFragment extends Fragment {
                 String prefix = buildIndexPrefix(n.getChapter(), n.getSection());
                 String title  = n.getTitle() == null ? "(無標題)" : n.getTitle();
                 cb.setText(prefix.isEmpty() ? title : (prefix + " " + title));
-                cb.setChecked(true); // 預設勾選
+                cb.setChecked(false); // 預設勾選
                 cb.setPadding(pad8, dp(6), pad8, dp(6));
                 secContainer.addView(cb);
                 itemRefs.add(new ItemRef(cb, n));
@@ -791,11 +801,12 @@ public class AiFragment extends Fragment {
 
         Note newNote = new Note("（AI 助手）", aiText);
         setLoading(true);
+        // ✅ 透過 NoteRepository → Cloud Functions 後端寫入
         new NoteRepository().addNote(newNote, task -> {
             if (getActivity()==null) return;
             getActivity().runOnUiThread(() -> {
                 setLoading(false);
-                if (task.isSuccessful()) toast("已存成新筆記");
+                if (task != null && task.isSuccessful()) toast("已存成新筆記");
                 else toast("儲存失敗");
             });
         });
@@ -1008,5 +1019,117 @@ public class AiFragment extends Fragment {
 
     private SharedPreferences sp(){
         return requireContext().getSharedPreferences(SP_NAME, Context.MODE_PRIVATE);
+    }
+
+    /** 取得單一 Note 的「blocks 純文字」。優先 blocks；若沒有 blocks 就回退 note.content。 */
+    private void fetchNoteBlocksText(@NonNull Note note, @NonNull OnString cb) {
+        // 嘗試用 Note 模型上的 ownerId；沒有就先用本人
+        String owner = note.getOwnerId() != null ? note.getOwnerId() : uid();
+        String noteId = note.getId();
+        if (owner == null || noteId == null) {
+            cb.onResult(""); // 無法定位路徑，給空字串
+            return;
+        }
+
+        // 🔑 快取 key：避免不同擁有者下同名 noteId 混淆
+        String cacheKey = owner + "/" + noteId;
+
+        // 命中快取直接回傳
+        if (blocksTextCache.containsKey(cacheKey)) {
+            cb.onResult(blocksTextCache.get(cacheKey));
+            return;
+        }
+
+        // 讀取 Firestore blocks
+        FirebaseFirestore.getInstance()
+                .collection("users").document(owner)
+                .collection("notes").document(noteId)
+                .collection("blocks")
+                .orderBy("index")
+                .get()
+                .addOnSuccessListener(snap -> {
+                    if (snap == null || snap.isEmpty()) {
+                        // 沒有 blocks → 回退 NOTE.content
+                        String fallback = note.getContent() == null ? "" : note.getContent();
+                        blocksTextCache.put(cacheKey, fallback);
+                        cb.onResult(fallback);
+                        return;
+                    }
+
+                    StringBuilder sb = new StringBuilder();
+                    for (DocumentSnapshot d : snap.getDocuments()) {
+                        // 只取文字型 block
+                        String type = String.valueOf(d.getString("type"));
+                        if (type == null) type = "";
+                        type = type.toLowerCase();
+
+                        if (type.isEmpty() || "text".equals(type) || "paragraph".equals(type)) {
+                            String t = d.getString("text");
+                            if (t != null && !t.trim().isEmpty()) {
+                                if (sb.length() > 0) sb.append('\n');
+                                sb.append(t.trim());
+                            }
+                        }
+                    }
+
+                    String out = sb.toString();
+                    if (out.isEmpty()) {
+                        // blocks 都是空字/非文字 → 再退回 note.content
+                        out = note.getContent() == null ? "" : note.getContent();
+                    }
+                    blocksTextCache.put(cacheKey, out);
+                    cb.onResult(out);
+                })
+                .addOnFailureListener(e -> {
+                    // 讀取失敗也回退 NOTE.content，避免整個流程卡住
+                    String fallback = note.getContent() == null ? "" : note.getContent();
+                    blocksTextCache.put(cacheKey, fallback);
+                    cb.onResult(fallback);
+                });
+    }
+
+    private interface OnString {
+        void onResult(String text);
+    }
+
+    /** 把多篇 Note 的 blocks 文本非同步合併；組出「【大類別】/《章節》/《內容》」格式。 */
+    private void buildCombinedNoteTextAsync(@NonNull List<Note> list, @NonNull OnString cb) {
+        if (list.isEmpty()) { cb.onResult(""); return; }
+
+        // 依你原本排序規則先排好
+        List<Note> sorted = new ArrayList<>(list);
+        sorted.sort((a,b) -> {
+            int s = safeCmp(normalizeStack(a.getStack()), normalizeStack(b.getStack()));
+            if (s != 0) return s;
+            int c = Integer.compare(a.getChapter(), b.getChapter());
+            if (c != 0) return c;
+            return Integer.compare(a.getSection(), b.getSection());
+        });
+
+        // 逐篇抓 blocks → 串起來
+        StringBuilder finalSb = new StringBuilder();
+        String[] lastCat = { null }; // 用陣列包起來給 inner lambda 改
+        int total = sorted.size();
+        int[] done = { 0 };
+
+        for (Note n : sorted) {
+            fetchNoteBlocksText(n, blocksText -> {
+                String cat = normalizeStack(n.getStack());
+                if (!Objects.equals(lastCat[0], cat)) {
+                    if (finalSb.length() > 0) finalSb.append('\n');
+                    finalSb.append("【大類別】").append(cat).append('\n');
+                    lastCat[0] = cat;
+                }
+                String prefix = buildIndexPrefix(n.getChapter(), n.getSection());
+                String title  = n.getTitle() == null ? "" : n.getTitle();
+                finalSb.append("《章節》").append(prefix.isEmpty() ? title : (prefix + " " + title)).append('\n');
+                finalSb.append("《內容》\n").append(blocksText == null ? "" : blocksText).append("\n\n");
+
+                done[0]++;
+                if (done[0] == total) {
+                    cb.onResult(finalSb.toString().trim());
+                }
+            });
+        }
     }
 }

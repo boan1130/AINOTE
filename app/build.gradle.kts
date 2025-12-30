@@ -1,7 +1,14 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     id("org.jetbrains.kotlin.android")
     id("com.google.gms.google-services")
+}
+
+// 全域排除舊的 IntelliJ annotations，避免 Duplicate class
+configurations.all {
+    exclude(group = "com.intellij", module = "annotations")
 }
 
 android {
@@ -17,8 +24,19 @@ android {
         versionCode = 1
         versionName = "1.0"
 
+        //testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        //buildConfigField("String", "OPENAI_API_KEY", "")
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "OPENAI_API_KEY", "")
+
+        // 讀取 local.properties 的 OPENAI_API_KEY
+        val props = Properties()
+        val lp = rootProject.file("local.properties")
+        if (lp.exists()) props.load(lp.inputStream())
+        val openaiKey = props.getProperty("OPENAI_API_KEY") ?: ""
+
+        // 第三個參數必須是可直接進入 Java 原始碼的字面量：用雙引號包起來
+        buildConfigField("String", "OPENAI_API_KEY", "\"$openaiKey\"")
     }
 
     buildTypes {
@@ -43,6 +61,7 @@ dependencies {
     implementation(libs.activity)
     implementation(libs.constraintlayout)
     implementation(libs.firebase.auth)
+    implementation(libs.room.compiler)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)

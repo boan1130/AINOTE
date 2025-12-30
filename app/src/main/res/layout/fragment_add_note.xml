@@ -1,0 +1,34 @@
+<!-- res/layout/fragment_add_note.xml -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <!-- 筆記標題輸入框 -->
+    <EditText
+        android:id="@+id/titleEditText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="標題"
+        android:textSize="18sp"
+        android:layout_marginBottom="16dp" />
+
+    <!-- 筆記內容輸入框 -->
+    <EditText
+        android:id="@+id/contentEditText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="內容"
+        android:textSize="16sp"
+        android:layout_marginBottom="16dp"
+        android:inputType="textMultiLine" />
+
+    <!-- 儲存筆記的按鈕 -->
+    <Button
+        android:id="@+id/saveButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="儲存筆記"
+        android:textSize="18sp" />
+</LinearLayout>

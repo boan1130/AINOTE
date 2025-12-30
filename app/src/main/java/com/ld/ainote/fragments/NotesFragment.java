@@ -35,20 +35,20 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QuerySnapshot;
-import com.google.firebase.firestore.FirebaseFirestore;
-
-import com.google.firebase.firestore.WriteBatch;
 import com.ld.ainote.NoteEditActivity;
 import com.ld.ainote.R;
 import com.ld.ainote.adapters.NoteAdapter;
+import com.ld.ainote.data.BlockRepository;
 import com.ld.ainote.data.NoteRepository;
 import com.ld.ainote.models.Note;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -135,48 +135,34 @@ public class NotesFragment extends Fragment {
                 return false;
             }
 
-            @Override public void onSwiped(@NonNull RecyclerView.ViewHolder vh, int dir) {
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder vh, int dir) {
                 int pos = vh.getAdapterPosition();
                 String myUid = FirebaseAuth.getInstance().getCurrentUser() != null
                         ? FirebaseAuth.getInstance().getCurrentUser().getUid() : "";
 
-                // 1) 大類別（Header）→ 整類刪除（僅刪除自己擁有的）
+                // 1) Header：整類刪除（維持你原本的確認流程）
                 if (adapter.isHeader(pos)) {
                     String category = adapter.getHeaderForPosition(pos);
-                    if (TextUtils.isEmpty(category)) {
-                        adapter.notifyItemChanged(pos);
-                        return;
-                    }
-                    // 彈窗二次確認 + 批次刪除
+                    if (TextUtils.isEmpty(category)) { adapter.notifyItemChanged(pos); return; }
                     confirmAndCascadeDeleteCategory(category, pos, myUid);
                     return;
                 }
 
-                // 2) 小章節（單筆筆記）→ 個別刪除（僅擁有者可刪）
+                // 2) 單筆 Note
                 Note n = adapter.getItem(pos);
                 if (n == null) { adapter.notifyItemChanged(pos); return; }
 
                 if (!TextUtils.equals(myUid, n.getOwnerId())) {
+                    // 非擁有者不可刪
                     adapter.notifyItemChanged(pos);
                     Toast.makeText(requireContext(), "僅擁有者可刪除此筆記", Toast.LENGTH_SHORT).show();
                     return;
                 }
 
-                // 先從 UI 移除（原行為）
-                adapter.removeLocalAt(pos);
-
-                repo.deleteNote(n.getId()).addOnCompleteListener(t -> {
-                    if (getView() == null) return;
-                    if (t.isSuccessful()) {
-                        Snackbar.make(getView(),
-                                        "已刪除「" + (n.getTitle()==null?"(無標題)":n.getTitle()) + "」",
-                                        Snackbar.LENGTH_LONG)
-                                .setAction("復原", v1 -> repo.addNote(new Note(n.getTitle(), n.getContent()), null))
-                                .show();
-                    } else {
-                        Toast.makeText(requireContext(), "刪除失敗", Toast.LENGTH_SHORT).show();
-                    }
-                });
+                // ✅ 先把滑動外觀復位，再跳出確認彈窗
+                adapter.notifyItemChanged(pos);
+                confirmDeleteSingleNote(n, pos);
             }
         };
         new ItemTouchHelper(swipe).attachToRecyclerView(rv);
@@ -300,16 +286,30 @@ public class NotesFragment extends Fragment {
             n.setChapter(intFrom(d.get("chapter")));
             n.setSection(intFrom(d.get("section")));
 
+            // 讀 collaborators（若有）
+            List<String> collabs = (List<String>) d.get("collaborators");
+            if (collabs != null) n.setCollaborators(collabs);
+
+            // 讀 timestamp（若有）
+            Date ts = d.getDate("timestamp");
+            if (ts != null) n.setTimestamp(ts);
+
             // 取得 ownerId：我的→myUid；共筆→由文件路徑取上層 users/{ownerId}
             String ownerId;
             if (fromMine) {
                 ownerId = myUid;
             } else {
                 DocumentReference ref = d.getReference();
-                ownerId = (ref.getParent() != null && ref.getParent().getParent() != null)
-                        ? ref.getParent().getParent().getId() : "";
+                // ref: .../users/{ownerId}/notes/{noteId}
+                ownerId = "";
+                if (ref != null && ref.getParent() != null && ref.getParent().getParent() != null) {
+                    ownerId = ref.getParent().getParent().getId();
+                }
             }
             n.setOwnerId(ownerId);
+
+            // ✅ 設定是否共筆：owner 不是自己即視為共筆
+            n.setShared(!TextUtils.equals(ownerId, myUid));
 
             String key = ownerId + "#" + n.getId();
             target.put(key, n);
@@ -475,14 +475,31 @@ public class NotesFragment extends Fragment {
                         Toast.makeText(requireContext(), hasCategories ? "請選擇大類別" : "請輸入大類別", Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    Note n = new Note("", "");
+                    String defaultTitle = TextUtils.isEmpty(cat)
+                            ? (chap + "-" + sec)
+                            : (cat + " " + chap + "-" + sec);
+                    Note n = new Note(defaultTitle, ""); // ✅ 至少有 title
                     n.setStack(cat);
                     n.setChapter(chap);
                     n.setSection(sec);
                     repo.addNote(n, task -> {
-                        if (task != null && task.isSuccessful()) {
-                            categoriesLocal.add(cat);
-                            Toast.makeText(requireContext(), "已建立 " + chap + "-" + sec, Toast.LENGTH_SHORT).show();
+                        if (task != null && task.isSuccessful() && task.getResult() != null) {
+                            String newId = task.getResult().getId();
+
+                            // 建立第一個空白區塊（index=0, type="text"）
+                            BlockRepository blockRepo = new BlockRepository();
+                            String myUid = FirebaseAuth.getInstance().getCurrentUser() != null
+                                    ? FirebaseAuth.getInstance().getCurrentUser().getUid() : "";
+                            blockRepo.createBlock(myUid, newId, /*index=*/0, "text", "")
+                                    .addOnSuccessListener(v2 -> {
+                                        categoriesLocal.add(cat);
+                                        Toast.makeText(requireContext(), "已建立 " + chap + "-" + sec, Toast.LENGTH_SHORT).show();
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        Log.d("NotesFrag", "showCreateNoteDialogWithDropdown: e = "+e.getMessage());
+                                        Toast.makeText(requireContext(), "筆記建立成功，但新增區塊失敗：" + e.getMessage(), Toast.LENGTH_LONG).show();
+                                    });
+
                         } else {
                             Toast.makeText(requireContext(), "建立失敗", Toast.LENGTH_SHORT).show();
                         }
@@ -600,9 +617,9 @@ public class NotesFragment extends Fragment {
         }
     }
 
-    /** 大類別整類刪除：僅刪除「我擁有」且 stack == category 的筆記；共筆不會刪除。 */
+    /** 大類別整類刪除：僅刪除「我擁有」且 stack == category 的筆記；共筆不會刪除（改走 Functions）。 */
     private void confirmAndCascadeDeleteCategory(@NonNull String category, int headerPos, @NonNull String myUid) {
-        // 找出你擁有且屬於此大類別的所有筆記
+        // 找出你擁有且屬於此大類別的所有筆記（僅用來顯示數量與權限檢查）
         List<Note> owned = new ArrayList<>();
         for (Note n : notesCache) {
             if (n == null) continue;
@@ -623,19 +640,14 @@ public class NotesFragment extends Fragment {
                 .setMessage("將刪除「" + category + "」底下你擁有的 " + owned.size() + " 筆章節/筆記，且無法復原。確定要刪除嗎？")
                 .setPositiveButton("刪除", (d, w) -> {
                     setLoading(true);
-                    WriteBatch batch = db.batch();
-                    for (Note n : owned) {
-                        DocumentReference ref = db.collection("users").document(myUid)
-                                .collection("notes").document(n.getId());
-                        batch.delete(ref);
-                    }
-                    batch.commit()
-                            .addOnSuccessListener(v -> {
+
+                    // 改呼叫後端 API（Cloud Functions）
+                    repo.deleteNotesByCategory(category)
+                            .addOnSuccessListener(deletedCount -> {
                                 setLoading(false);
-                                // 還原 Header 外觀；清空展開狀態也可選擇性做
-                                adapter.notifyItemChanged(headerPos);
+                                adapter.notifyItemChanged(headerPos); // 還原 Header 外觀
                                 Snackbar.make(requireView(),
-                                        "已刪除「" + category + "」底下的 " + owned.size() + " 筆（僅刪除你擁有的）",
+                                        "已刪除「" + category + "」底下的 " + deletedCount + " 筆（僅刪除你擁有的）",
                                         Snackbar.LENGTH_LONG).show();
                             })
                             .addOnFailureListener(e -> {
@@ -648,6 +660,48 @@ public class NotesFragment extends Fragment {
                     // 使用者取消 → 還原 Header 外觀
                     adapter.notifyItemChanged(headerPos);
                 })
+                .show();
+    }
+
+    private void confirmDeleteSingleNote(@NonNull Note n, int pos) {
+        String title = TextUtils.isEmpty(n.getTitle()) ? "(無標題)" : n.getTitle();
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("刪除筆記")
+                .setMessage("確定要刪除「" + title + "」嗎？")
+                .setPositiveButton("刪除", (d, w) -> {
+                    setLoading(true);
+                    repo.deleteNote(n.getId()).addOnCompleteListener(t -> {
+                        setLoading(false);
+                        if (!isAdded() || getView() == null) return;
+
+                        if (t.isSuccessful()) {
+                            // 讓 UI 立即有感（等 Firestore 回補也可以，但這樣更即時）
+                            adapter.removeLocalAt(pos);
+
+                            Snackbar.make(getView(),
+                                            "已刪除「" + title + "」",
+                                            Snackbar.LENGTH_LONG)
+                                    .setAction("復原", v1 -> {
+                                        // 將欄位補齊再新建一筆（ID 會是新的）
+                                        Note restore = new Note(n.getTitle(), n.getContent());
+                                        restore.setStack(n.getStack());
+                                        restore.setChapter(n.getChapter());
+                                        restore.setSection(n.getSection());
+                                        restore.setTags(n.getTags());
+                                        repo.addNote(restore, null);
+                                    })
+                                    .show();
+                        } else {
+                            Toast.makeText(requireContext(), "刪除失敗", Toast.LENGTH_SHORT).show();
+                            // 保險：還原外觀（理論上前面已 notifyItemChanged）
+                            if (pos >= 0 && pos < adapter.getItemCount()) {
+                                adapter.notifyItemChanged(pos);
+                            }
+                        }
+                    });
+                })
+                .setNegativeButton("取消", null)
                 .show();
     }
 }

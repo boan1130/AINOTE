@@ -296,34 +296,85 @@ public class ProfileFragment extends Fragment {
     }
 
     /** 取得好友的狀態/筆記數（摘要資訊） */
+    /** 取得好友的狀態/「分享給我的」筆記數（摘要資訊） */
     private void fetchFriendDetails(String friendUid) {
+        String myUid = FirebaseAuth.getInstance().getCurrentUser() != null
+                ? FirebaseAuth.getInstance().getCurrentUser().getUid() : null;
+        if (myUid == null) return;
+
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        // 初始 Friend 物件，避免 UI 閃爍或 NullPointer
+        Friend f = new Friend();
+        f.setUid(friendUid);
+        f.setDisplayName("");
+        f.setEmail(null);
+        f.setLastOnline(0);
+        f.setNoteCount(0);
+        friendAdapter.upsert(f);
+
         DocumentReference otherDoc = db.collection("users").document(friendUid);
-        CollectionReference notesCol = db.collection("users").document(friendUid).collection("notes");
 
-        Tasks.whenAllSuccess(otherDoc.get(), notesCol.get())
-                .addOnSuccessListener(results -> {
-                    DocumentSnapshot userSnap = (DocumentSnapshot) results.get(0);
-                    QuerySnapshot noteSnap = (QuerySnapshot) results.get(1);
-
+        // === A. 讀取朋友基本資料 ===
+        otherDoc.get()
+                .addOnSuccessListener(userSnap -> {
+                    String dn = null, em = null;
                     long last = 0L;
                     boolean online = false;
+
                     if (userSnap.exists()) {
-                        Timestamp ts = userSnap.getTimestamp("lastOnline");
+                        dn = userSnap.getString("displayName");
+                        em = userSnap.getString("email");
+                        com.google.firebase.Timestamp ts = userSnap.getTimestamp("lastOnline");
                         if (ts != null) last = ts.toDate().getTime();
                         Boolean on = userSnap.getBoolean("online");
                         online = on != null && on;
                     }
-                    int count = noteSnap != null ? noteSnap.size() : 0;
 
-                    Friend f = new Friend();
-                    f.setUid(friendUid);
-                    f.setDisplayName(userSnap.getString("displayName"));
-                    f.setEmail(userSnap.getString("email"));
-                    f.setLastOnline(online ? System.currentTimeMillis() : last);
-                    f.setNoteCount(count);
-                    friendAdapter.upsert(f);
+                    // ✅ 顯示名稱優先順序：displayName → email → ""
+                    String display = !TextUtils.isEmpty(dn)
+                            ? dn
+                            : (em != null ? em : "");
+
+                    Friend cur = new Friend();
+                    cur.setUid(friendUid);
+                    cur.setDisplayName(display);
+                    cur.setEmail(em);
+                    cur.setLastOnline(online ? System.currentTimeMillis() : last);
+                    cur.setNoteCount(f.getNoteCount()); // 保留舊的筆記數
+                    friendAdapter.upsert(cur);
                 })
-                .addOnFailureListener(e -> { /* ignore */ });
+                .addOnFailureListener(e -> {
+                    // 不中斷，保留原顯示
+                });
+
+        // === B. 統計「朋友分享給我的筆記數」 ===
+        // ⚠️ 這裡改成直接查「users/{friendUid}/notes」而不是 collectionGroup
+        //    因為 Firestore 規則允許你讀取有你在 collaborators 裡的文件
+        Query sharedWithMeCountQ = db.collection("users")
+                .document(friendUid)
+                .collection("notes")
+                .whereArrayContains("collaborators", myUid);
+
+        sharedWithMeCountQ.get()
+                .addOnSuccessListener(sharedNotesSnap -> {
+                    int sharedCount = (sharedNotesSnap != null) ? sharedNotesSnap.size() : 0;
+
+                    // 用 adapter 取舊值避免覆蓋名稱/狀態
+                    Friend existing = friendAdapter.findByUid(friendUid);
+                    Friend cur = new Friend();
+                    cur.setUid(friendUid);
+                    cur.setDisplayName(existing != null ? existing.getDisplayName() : f.getDisplayName());
+                    cur.setEmail(existing != null ? existing.getEmail() : f.getEmail());
+                    cur.setLastOnline(existing != null ? existing.getLastOnline() : f.getLastOnline());
+                    cur.setNoteCount(sharedCount);
+
+                    friendAdapter.upsert(cur);
+                })
+                .addOnFailureListener(e -> {
+                    // 若缺索引或權限問題，Logcat 可檢查 e
+                    // Log.e("ProfileFragment", "count shared notes failed", e);
+                });
     }
 
     /** 線上狀態（簡易版） */

@@ -121,7 +121,8 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
                     app:boxStrokeColor="#C6A15F"
-                    app:boxBackgroundColor="@android:color/transparent">
+                    app:boxBackgroundColor="@android:color/transparent"
+                    android:visibility="gone">
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etContent"
                         android:hint="內容（可選取範圍→按螢光筆）"
@@ -132,12 +133,30 @@
                         android:layout_height="wrap_content"/>
                 </com.google.android.material.textfield.TextInputLayout>
 
+                <!-- 區塊編輯清單 -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="內容區塊"
+                    android:textStyle="bold"
+                    android:textColor="#5C4B2A"
+                    android:layout_marginTop="12dp"/>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvBlocks"
+                    android:layout_width="match_parent"
+                    android:layout_height="300dp"
+                    android:overScrollMode="ifContentScrolls"
+                    android:scrollbars="vertical"
+                    android:nestedScrollingEnabled="true" />
+
                 <!-- 螢光筆操作 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:layout_marginTop="8dp">
+                    android:layout_marginTop="8dp"
+                    android:visibility="gone">
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnMark"
                         style="@style/Widget.AINotes.Button"

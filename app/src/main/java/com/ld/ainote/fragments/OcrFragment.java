@@ -4,7 +4,6 @@ import android.Manifest;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
-import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.ImageDecoder;
 import android.net.Uri;
@@ -28,13 +27,13 @@ import androidx.fragment.app.Fragment;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
-import com.google.firebase.Timestamp;
 import com.google.mlkit.vision.common.InputImage;
 import com.google.mlkit.vision.text.Text;
 import com.google.mlkit.vision.text.TextRecognition;
 import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions;
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 import com.ld.ainote.R;
+import com.ld.ainote.data.BlockRepository;
 import com.ld.ainote.data.NoteRepository;
 import com.ld.ainote.models.Note;
 
@@ -80,8 +79,7 @@ public class OcrFragment extends Fragment {
 
         requestPermissions = registerForActivityResult(
                 new ActivityResultContracts.RequestMultiplePermissions(),
-                result -> {
-                });
+                result -> {});
 
         takePictureLauncher = registerForActivityResult(
                 new ActivityResultContracts.TakePicture(),
@@ -120,15 +118,34 @@ public class OcrFragment extends Fragment {
                 Toast.makeText(getContext(), "沒有辨識到文字，無法儲存", Toast.LENGTH_SHORT).show();
                 return;
             }
+
             String title = "OCR 擷取 " + titleFmt.format(new Date());
-            Note note = new Note(title, content);
-            new NoteRepository().addNote(note, task -> {
-                if (task.isSuccessful()) {
-                    Toast.makeText(getContext(), "已存成筆記", Toast.LENGTH_SHORT).show();
+            Note note = new Note(title, ""); // 不直接塞 content，改由 blocks 儲存
+            note.setStack("OCR");
+            note.setChapter(0);
+            note.setSection(0);
+
+            NoteRepository repo = new NoteRepository();
+            repo.addNote(note, task -> {
+                if (task != null && task.isSuccessful() && task.getResult() != null) {
+                    String noteId = task.getResult().getId();
+                    String ownerId = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid();
+
+                    // ✅ 自動分段：以空行分段（你可依需求調整）
+                    String[] paragraphs = content.split("\\n{2,}");
+                    BlockRepository blockRepo = new BlockRepository();
+                    for (int i = 0; i < paragraphs.length; i++) {
+                        String para = paragraphs[i].trim();
+                        if (para.isEmpty()) continue;
+                        blockRepo.createBlock(ownerId, noteId, i, "text", para);
+                    }
+
+                    Toast.makeText(getContext(), "已存成筆記（共 " + paragraphs.length + " 段）", Toast.LENGTH_SHORT).show();
                 } else {
-                    Toast.makeText(getContext(), "儲存失敗：" +
-                                    (task.getException() != null ? task.getException().getMessage() : ""),
-                            Toast.LENGTH_LONG).show();
+                    String msg = (task != null && task.getException() != null)
+                            ? task.getException().getMessage()
+                            : "未知錯誤";
+                    Toast.makeText(getContext(), "儲存失敗：" + msg, Toast.LENGTH_LONG).show();
                 }
             });
         });

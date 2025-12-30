@@ -1,169 +1,3 @@
-/*package com.ld.ainote.adapters;
-
-import android.text.TextUtils;
-import android.view.*;
-import android.widget.TextView;
-import androidx.annotation.NonNull;
-import androidx.recyclerview.widget.RecyclerView;
-import com.ld.ainote.R;
-import com.ld.ainote.models.Note;
-import java.text.SimpleDateFormat;
-import java.util.*;
-
-public class NoteAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
-
-    private static final int VIEW_NOTE = 0;
-    private static final int VIEW_HEADER = 1;
-
-    private final SimpleDateFormat fmt = new SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault());
-
-    // 原始資料（來自 Firestore）
-    private final List<Note> all = new ArrayList<>();
-    // 展示列（含 header/notes）
-    private final List<Row> rows = new ArrayList<>();
-
-    private boolean grouped = false;
-    private String keyword = null;
-    private OnItemClickListener listener;
-
-    public interface OnItemClickListener { void onItemClick(Note n); }
-    public void setOnItemClickListener(OnItemClickListener l) { this.listener = l; }
-
-    public static class Row {
-        boolean header;
-        String headerTitle;
-        Note note;
-        Row(String headerTitle){ this.header = true; this.headerTitle = headerTitle; }
-        Row(Note n){ this.header = false; this.note = n; }
-    }
-
-    public void submitAll(List<Note> notes) {
-        all.clear();
-        if (notes != null) all.addAll(notes);
-        rebuild();
-    }
-
-    public void setGrouped(boolean on) {
-        this.grouped = on;
-        rebuild();
-    }
-
-    public void setKeyword(String kw) {
-        this.keyword = TextUtils.isEmpty(kw) ? null : kw.toLowerCase(Locale.ROOT);
-        rebuild();
-    }
-
-    // 供外部操作滑動刪除後的即時移除（可選）
-    public void removeLocalAt(int position) {
-        if (position < 0 || position >= rows.size()) return;
-        if (rows.get(position).header) return; // 不移除 header
-        rows.remove(position);
-        notifyItemRemoved(position);
-    }
-
-    public boolean isHeader(int position) {
-        if (position < 0 || position >= rows.size()) return false;
-        return rows.get(position).header;
-    }
-
-    public Note getItem(int position) {
-        if (position < 0 || position >= rows.size()) return null;
-        Row r = rows.get(position);
-        return r.header ? null : r.note;
-    }
-
-    public List<Note> getAll() { return new ArrayList<>(all); }
-
-    private void rebuild() {
-        rows.clear();
-
-        // 1) 過濾
-        List<Note> filtered = new ArrayList<>();
-        for (Note n : all) {
-            if (keyword == null) {
-                filtered.add(n);
-            } else {
-                String t = n.getTitle() == null ? "" : n.getTitle().toLowerCase(Locale.ROOT);
-                String c = n.getContent() == null ? "" : n.getContent().toLowerCase(Locale.ROOT);
-                if (t.contains(keyword) || c.contains(keyword)) filtered.add(n);
-            }
-        }
-
-        // 2) 群組 or 扁平
-        if (!grouped) {
-            for (Note n : filtered) rows.add(new Row(n));
-        } else {
-            // 以 stack 名稱分組；null/空字串歸 "(未分組)"
-            LinkedHashMap<String, List<Note>> map = new LinkedHashMap<>();
-            for (Note n : filtered) {
-                String key = (n.getStack() == null || n.getStack().trim().isEmpty()) ? "(未分組)" : n.getStack().trim();
-                if (!map.containsKey(key)) map.put(key, new ArrayList<>());
-                map.get(key).add(n);
-            }
-            for (Map.Entry<String, List<Note>> e : map.entrySet()) {
-                rows.add(new Row(e.getKey()));
-                for (Note n : e.getValue()) rows.add(new Row(n));
-            }
-        }
-        notifyDataSetChanged();
-    }
-
-    @Override public int getItemViewType(int position) {
-        return rows.get(position).header ? VIEW_HEADER : VIEW_NOTE;
-    }
-
-    @NonNull @Override
-    public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup p, int viewType) {
-        LayoutInflater inf = LayoutInflater.from(p.getContext());
-        if (viewType == VIEW_HEADER) {
-            View v = inf.inflate(R.layout.item_section_header, p, false);
-            return new HeaderVH(v);
-        } else {
-            View v = inf.inflate(R.layout.item_note, p, false);
-            return new NoteVH(v);
-        }
-    }
-
-    @Override
-    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder h, int pos) {
-        Row r = rows.get(pos);
-        if (r.header) {
-            HeaderVH vh = (HeaderVH) h;
-            vh.tvHeader.setText(r.headerTitle);
-        } else {
-            Note n = r.note;
-            NoteVH vh = (NoteVH) h;
-            vh.tvTitle.setText(n.getTitle());
-            vh.tvContent.setText(n.getContent());
-            if (n.getTimestamp() != null) {
-                vh.tvTimestamp.setText(fmt.format(n.getTimestamp()));
-            } else {
-                vh.tvTimestamp.setText("");
-            }
-            vh.itemView.setOnClickListener(v -> { if (listener != null) listener.onItemClick(n); });
-        }
-    }
-
-    @Override public int getItemCount() { return rows.size(); }
-
-    static class HeaderVH extends RecyclerView.ViewHolder {
-        TextView tvHeader;
-        HeaderVH(@NonNull View v){ super(v); tvHeader = v.findViewById(R.id.tvHeader); }
-    }
-
-    static class NoteVH extends RecyclerView.ViewHolder {
-        TextView tvTitle, tvContent, tvTimestamp;
-        NoteVH(@NonNull View v){
-            super(v);
-            tvTitle = v.findViewById(R.id.tvTitle);
-            tvContent = v.findViewById(R.id.tvContent);
-            tvTimestamp = v.findViewById(R.id.tvTimestamp);
-        }
-    }
-
-}
-*/
-
 package com.ld.ainote.adapters;
 
 import android.text.TextUtils;
@@ -186,6 +20,7 @@ import java.util.*;
  * - 群組模式下的展開/收合（由外部傳入 expandedCategories 控制）
  * - Header 點擊辨識：getHeaderForPosition(position)
  * - 依需求在標題前顯示 chapter-section（例如 1-2）
+ * - ✅ 顯示共筆標示；Header 顯示「（總數｜共筆M）」
  */
 public class NoteAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
@@ -214,15 +49,17 @@ public class NoteAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     // 內部行定義
     public static class Row {
         final boolean header;
-        final String headerTitle; // 僅 header 用
-        final int headerChildCount; // header 下子項數量（用於顯示）
-        final Note note;          // 僅 note 用
+        final String headerTitle;      // 僅 header 用（類別名）
+        final int headerChildCount;    // header 下子項總數
+        final int headerSharedCount;   // ✅ 該類別內共筆數
+        final Note note;               // 僅 note 用
 
         // Header 列
-        Row(String headerTitle, int childCount) {
+        Row(String headerTitle, int childCount, int sharedCount) {
             this.header = true;
             this.headerTitle = headerTitle;
             this.headerChildCount = childCount;
+            this.headerSharedCount = sharedCount;
             this.note = null;
         }
 
@@ -231,6 +68,7 @@ public class NoteAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             this.header = false;
             this.headerTitle = null;
             this.headerChildCount = 0;
+            this.headerSharedCount = 0;
             this.note = n;
         }
     }
@@ -296,7 +134,7 @@ public class NoteAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private void rebuild() {
         rows.clear();
 
-        // 1) 過濾（關鍵字比對標題/內容；可視需求再加 stack 比對）
+        // 1) 過濾（關鍵字比對標題/內容；必要時可加 stack 比對）
         List<Note> filtered = new ArrayList<>();
         for (Note n : all) {
             if (keyword == null) {
@@ -320,7 +158,7 @@ public class NoteAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 map.computeIfAbsent(key, k -> new ArrayList<>()).add(n);
             }
 
-            // 按章節排序（假設外部已經大致排序過；這裡保險再針對每組做一次章/節排序）
+            // 按章節排序 & 計算共筆數
             for (Map.Entry<String, List<Note>> e : map.entrySet()) {
                 List<Note> group = e.getValue();
                 group.sort((a, b) -> {
@@ -328,16 +166,16 @@ public class NoteAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                     if (c != 0) return c;
                     return Integer.compare(a.getSection(), b.getSection());
                 });
-            }
 
-            // 只顯示 Header，若該類別有在 expandedCategories 內才加上子筆記
-            for (Map.Entry<String, List<Note>> e : map.entrySet()) {
+                int sharedCount = 0;
+                for (Note n : group) if (n.isShared()) sharedCount++;
+
                 String cat = e.getKey();
-                List<Note> items = e.getValue();
                 boolean expanded = expandedCategories.contains(cat);
-                rows.add(new Row(cat, items.size()));
+
+                rows.add(new Row(cat, group.size(), sharedCount));
                 if (expanded) {
-                    for (Note n : items) rows.add(new Row(n));
+                    for (Note n : group) rows.add(new Row(n));
                 }
             }
         }
@@ -369,23 +207,29 @@ public class NoteAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         if (r.header) {
             HeaderVH vh = (HeaderVH) h;
 
-            // 顯示「類別名（子項數）▼/▲」
+            // 顯示「類別名（總數｜共筆M）▼/▲」，若共筆=0 則顯示「（總數）」
             String cat = r.headerTitle;
             boolean expanded = expandedCategories.contains(cat);
             String arrow = expanded ? " ▲" : " ▼";
-            String text = cat + "（" + r.headerChildCount + "）" + arrow;
-            vh.tvHeader.setText(text);
+            String countText = (r.headerSharedCount > 0)
+                    ? ("（" + r.headerChildCount + "｜共筆" + r.headerSharedCount + "）")
+                    : ("（" + r.headerChildCount + "）");
+            vh.tvHeader.setText(cat + countText + arrow);
 
-            // 可選：讓整個 header row 看起來可點（加粗/大小/顏色等，交給 item_section_header.xml 控制）
         } else {
             Note n = r.note;
             NoteVH vh = (NoteVH) h;
 
-            // 在標題前加上「chapter-section」前綴（若有）
+            // 在標題前加上「chapter-section」前綴
             String prefix = buildIndexPrefix(n.getChapter(), n.getSection());
+
+            // 共筆標示（prefix 前再加 [共筆]）
+            String sharedMark = n.isShared() ? "[共筆] " : "";
+
             String title = n.getTitle();
             if (TextUtils.isEmpty(title)) title = "(無標題)";
-            vh.tvTitle.setText(prefix.isEmpty() ? title : (prefix + " " + title));
+            String finalTitle = (sharedMark + (prefix.isEmpty() ? title : (prefix + " " + title))).trim();
+            vh.tvTitle.setText(finalTitle);
 
             vh.tvContent.setText(n.getContent());
 
